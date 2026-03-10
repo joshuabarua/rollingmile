@@ -12,84 +12,6 @@
     const bctx = buf.getContext('2d');
     bctx.imageSmoothingEnabled = false;
 
-    // Audio system
-    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    let bgGainNode = audioContext.createGain();
-    bgGainNode.gain.value = 0.3;
-    bgGainNode.connect(audioContext.destination);
-    let sfxGainNode = audioContext.createGain();
-    sfxGainNode.gain.value = 0.6;
-    sfxGainNode.connect(audioContext.destination);
-    let soundEnabled = true;
-    let bgMusicSource = null;
-    let bgMusicBuffer = null;
-
-    function beep(frequency = 440, duration = 0.1, type = 'sine') {
-        if (!soundEnabled) return;
-        const osc = audioContext.createOscillator();
-        const gain = audioContext.createGain();
-        osc.frequency.value = frequency;
-        osc.type = type;
-        gain.gain.setValueAtTime(0.3, audioContext.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
-        osc.connect(gain);
-        gain.connect(sfxGainNode);
-        osc.start(audioContext.currentTime);
-        osc.stop(audioContext.currentTime + duration);
-    }
-
-    function playSound(name) {
-        if (!soundEnabled) return;
-        switch (name) {
-            case 'step': beep(180, 0.05, 'square'); break;
-            case 'interact': beep(660, 0.08, 'sine'); break;
-            case 'discover': beep(880, 0.12, 'sine'); setTimeout(() => beep(1100, 0.12, 'sine'), 60); break;
-            case 'complete': beep(523, 0.15); setTimeout(() => beep(659, 0.15), 100); setTimeout(() => beep(784, 0.2), 200); break;
-            case 'pauseIn': beep(440, 0.1, 'triangle'); break;
-            case 'pauseOut': beep(550, 0.1, 'triangle'); break;
-            case 'eventStart': beep(990, 0.2, 'sawtooth'); break;
-            case 'eventEnd': beep(330, 0.15, 'sine'); break;
-        }
-    }
-
-    function startBackgroundMusic() {
-        if (!soundEnabled || bgMusicSource) return;
-        if (!bgMusicBuffer) {
-            // Simple procedural background loop
-            const osc = audioContext.createOscillator();
-            const lfo = audioContext.createOscillator();
-            const lfoGain = audioContext.createGain();
-            osc.type = 'triangle';
-            osc.frequency.value = 110;
-            lfo.frequency.value = 0.3;
-            lfoGain.gain.value = 20;
-            lfo.connect(lfoGain);
-            lfoGain.connect(osc.frequency);
-            osc.connect(bgGainNode);
-            osc.start();
-            lfo.start();
-            bgMusicSource = { osc, lfo };
-        } else {
-            const src = audioContext.createBufferSource();
-            src.buffer = bgMusicBuffer;
-            src.loop = true;
-            src.connect(bgGainNode);
-            src.start();
-            bgMusicSource = src;
-        }
-    }
-
-    function stopBackgroundMusic() {
-        if (bgMusicSource && bgMusicSource.stop) {
-            try { bgMusicSource.stop(); } catch (e) {}
-            bgMusicSource = null;
-        } else if (bgMusicSource && bgMusicSource.osc) {
-            bgMusicSource.osc.stop();
-            bgMusicSource.lfo.stop();
-            bgMusicSource = null;
-        }
-    }
-
     const K = {
         g1: '#6ec46e', g2: '#5db85d', g3: '#4caa4c', g4: '#3d9d3d',
         p1: '#c4af96', p2: '#b49f86', p3: '#a48f76',
@@ -249,15 +171,13 @@
     const dialog = { active: false, text: '', displayedChars: 0, timer: 0, speed: 1, lines: [] };
     let lastTriggerId = null;
     let visitedSpots = new Set();
-    let gameStarted = false;
+    let gameStarted = true;
     let paused = false;
     let gameFrame = 0;
     let currentEvent = null;
     let eventTimer = 0;
     let nextRandomEventTime = 0;
 
-    // Day/night cycle
-    let dayPhase = 0;
     const DAY_CYCLE_FRAMES = 2400;
 
     function getDayPhase() {
@@ -420,7 +340,6 @@
 
     function showDialog(t) {
         dialog.active = true; dialog.text = t; dialog.displayedChars = 0; dialog.timer = 0; dialog.lines = [];
-        playSound('interact');
     }
 
     function updateQuestUI() {
@@ -433,7 +352,6 @@
         if (count === total) {
             currentEl.textContent = 'All spots visited! You are a Berlin run legend.';
             statusEl.textContent = 'Quest complete!';
-            playSound('complete');
         } else {
             currentEl.textContent = 'Find the run culture hotspots.';
             statusEl.textContent = 'Explore the city.';
@@ -484,7 +402,7 @@
                 if (nx >= 0 && nx < MC && ny >= 0 && ny < MR) {
                     const tile = map[ny][nx];
                     const npcHere = npcs.find(n => n.x === nx && n.y === ny);
-                    if (!SOLID.includes(tile) && !npcHere) { player.walking = true; player.step = 1 - player.step; playSound('step'); }
+                    if (!SOLID.includes(tile) && !npcHere) { player.walking = true; player.step = 1 - player.step; }
                 }
             }
             if (keys[' '] || keys['Enter']) {
@@ -530,7 +448,6 @@
                         visitedSpots.add(trig.id);
                         updateQuestUI();
                         showLocationCard(trig.name, trig.subtitle);
-                        playSound('discover');
                     }
                 }
             } else {
@@ -576,7 +493,6 @@
             if (current >= eventStart && current < eventEnd && !currentEvent) {
                 currentEvent = event;
                 showDialog(`${event.name}\n${event.message}`);
-                playSound('eventStart');
             }
         });
         if (currentEvent) {
@@ -585,7 +501,6 @@
             const current = hour * 60 + minute;
             if (current >= eventEnd) {
                 currentEvent = null;
-                playSound('eventEnd');
             }
         }
     }
@@ -643,21 +558,15 @@
         if (paused) {
             pauseScreen.classList.add('visible');
             pauseScreen.classList.remove('hidden');
-            playSound('pauseIn');
-            stopBackgroundMusic();
         } else {
             pauseScreen.classList.remove('visible');
             setTimeout(() => pauseScreen.classList.add('hidden'), 300);
-            playSound('pauseOut');
-            startBackgroundMusic();
         }
     }
 
     function toggleSound() {
-        soundEnabled = !soundEnabled;
+        const soundEnabled = false;
         document.getElementById('audio-text').textContent = `Sound: ${soundEnabled ? 'On' : 'Off'}`;
-        if (soundEnabled && gameStarted && !paused) startBackgroundMusic();
-        else stopBackgroundMusic();
     }
 
     function saveGame() {
@@ -684,19 +593,11 @@
     }
 
     function startGame() {
-        gameStarted = true;
         loadGame();
-        document.getElementById('start-screen').classList.remove('visible');
-        setTimeout(() => document.getElementById('start-screen').classList.add('hidden'), 300);
         updateQuestUI();
-        startBackgroundMusic();
     }
 
     function loop() {
-        if (!gameStarted) {
-            requestAnimationFrame(loop);
-            return;
-        }
         if (!paused) {
             gameFrame++;
             animTick++; if (animTick % 30 === 0) animFrame = (animFrame + 1) % 4;
@@ -710,7 +611,10 @@
         requestAnimationFrame(loop);
     }
 
-    document.getElementById('start-button').addEventListener('click', startGame);
+    document.getElementById('start-button').addEventListener('click', () => {
+        document.getElementById('start-screen').classList.remove('visible');
+        setTimeout(() => document.getElementById('start-screen').classList.add('hidden'), 300);
+    });
     document.getElementById('resume-button').addEventListener('click', togglePause);
     document.getElementById('toggle-sound-button').addEventListener('click', toggleSound);
 
@@ -735,5 +639,6 @@
 
     window.addEventListener('beforeunload', saveGame);
 
+    startGame();
     loop();
 })();
