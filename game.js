@@ -168,7 +168,7 @@
 
     const player = { x: 46, y: 20, px: 46 * TILE, py: 20 * TILE, dir: 0, walking: false, step: 0 };
     const cam = { x: 0, y: 0 };
-    const dialog = { active: false, text: '', displayedChars: 0, timer: 0, speed: 1, lines: [] };
+    const dialog = { active: false, text: '', displayedChars: 0, timer: 0, speed: 1, lines: [], autoClose: 0 };
     let lastTriggerId = null;
     let visitedSpots = new Set();
     let gameStarted = true;
@@ -339,8 +339,9 @@
         }
     }
 
-    function showDialog(t) {
+    function showDialog(t, autoCloseFrames = 0) {
         dialog.active = true; dialog.text = t; dialog.displayedChars = 0; dialog.timer = 0; dialog.lines = [];
+        dialog.autoClose = autoCloseFrames;
     }
 
     function updateQuestUI() {
@@ -493,7 +494,7 @@
             const current = hour * 60 + minute;
             if (current >= eventStart && current < eventEnd && !currentEvent) {
                 currentEvent = event;
-                showDialog(`${event.name}\n${event.message}`);
+                showDialog(`${event.name}\n${event.message}`, 180);
             }
         });
         if (currentEvent) {
@@ -509,7 +510,7 @@
     function updateRandomEvents() {
         if (gameFrame > nextRandomEventTime && !dialog.active && !currentEvent) {
             const event = randomEvents[Math.floor(Math.random() * randomEvents.length)];
-            showDialog(event.text);
+            showDialog(event.text, 180);
             currentEvent = { text: event.text };
             eventTimer = event.duration;
             nextRandomEventTime = gameFrame + 600 + Math.floor(Math.random() * 600);
@@ -605,7 +606,14 @@
             handleInput(); updatePlayer();
             updateRunEvents();
             updateRandomEvents();
-            if (dialog.active && dialog.displayedChars < (dialog.lines.length ? dialog.lines.join('\n').length : dialog.text.length)) if (++dialog.timer >= dialog.speed) { dialog.timer = 0; dialog.displayedChars++; }
+            if (dialog.active) {
+                if (dialog.displayedChars < (dialog.lines.length ? dialog.lines.join('\n').length : dialog.text.length)) {
+                    if (++dialog.timer >= dialog.speed) { dialog.timer = 0; dialog.displayedChars++; }
+                } else if (dialog.autoClose > 0) {
+                    dialog.autoClose--;
+                    if (dialog.autoClose <= 0) dialog.active = false;
+                }
+            }
             if (gameFrame % 300 === 0) saveGame();
         }
         render();
