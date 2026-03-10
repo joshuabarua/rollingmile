@@ -1,0 +1,24 @@
+{
+  "name": "rollingmile",
+  "version": "1.0.0",
+  "description": "A pixel-art exploration game about Berlin’s running culture. Wander the city, meet runners, and visit every featured spot.",
+  "main": "game.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/joshuabarua/rollingmile.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/joshuabarua/rollingmile/issues"
+  },
+  "homepage": "https://github.com/joshuabarua/rollingmile#readme",
+  "dependencies": {
+    "puppeteer": "^24.39.0"
+  }
+}

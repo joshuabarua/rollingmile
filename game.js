@@ -306,7 +306,8 @@
 
     function wordWrap(text, maxWidth) {
         bctx.font = '8px "Press Start 2P", monospace';
-        const words = text.split(' '), lines = [], line = '';
+        const words = text.split(' '), lines = [];
+        let line = '';
         for (let i = 0; i < words.length; i++) {
             const test = line ? line + ' ' + words[i] : words[i];
             if (bctx.measureText(test).width > maxWidth && line) { lines.push(line); line = words[i]; } else line = test;
@@ -565,8 +566,8 @@
     }
 
     function toggleSound() {
-        const soundEnabled = false;
-        document.getElementById('audio-text').textContent = `Sound: ${soundEnabled ? 'On' : 'Off'}`;
+        // Sound is disabled
+        document.getElementById('audio-text').textContent = 'Sound: Off';
     }
 
     function saveGame() {
