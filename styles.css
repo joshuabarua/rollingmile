@@ -1,0 +1,265 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html,
+body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #0a0a12;
+    font-family: 'Press Start 2P', monospace;
+}
+
+body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#game-shell {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+}
+
+#game-canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+}
+
+#hud-top {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    right: 12px;
+    display: flex;
+    gap: 12px;
+    pointer-events: none;
+    z-index: 10;
+}
+
+.panel {
+    background: rgba(10, 10, 18, 0.85);
+    border: 2px solid #f8f6f0;
+    border-radius: 4px;
+    padding: 8px 12px;
+    color: #f8f6f0;
+    font-size: 10px;
+    line-height: 1.4;
+    flex: 1;
+    max-width: 240px;
+}
+
+.panel-label {
+    color: #ffdd44;
+    margin-bottom: 4px;
+}
+
+#quest-progress {
+    margin: 4px 0;
+    color: #6ca8d8;
+}
+
+#status-text {
+    margin-bottom: 4px;
+}
+
+#audio-text {
+    font-size: 9px;
+    color: #888;
+}
+
+#location-card {
+    position: absolute;
+    bottom: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(10, 10, 18, 0.92);
+    border: 2px solid #ffdd44;
+    border-radius: 4px;
+    padding: 12px 20px;
+    color: #f8f6f0;
+    font-size: 11px;
+    text-align: center;
+    min-width: 260px;
+    opacity: 0;
+    transition: opacity 0.4s;
+    pointer-events: none;
+    z-index: 11;
+}
+
+#location-card.visible {
+    opacity: 1;
+}
+
+#location-title {
+    color: #ffdd44;
+    margin-bottom: 6px;
+}
+
+#location-subtitle {
+    color: #aaa;
+    font-size: 9px;
+}
+
+#hint {
+    position: fixed;
+    bottom: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: 'Press Start 2P', monospace;
+    font-size: 9px;
+    color: rgba(255, 255, 255, 0.4);
+    pointer-events: none;
+    text-align: center;
+    z-index: 5;
+}
+
+.overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(10, 10, 18, 0.85);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+}
+
+.overlay.visible {
+    opacity: 1;
+    pointer-events: all;
+}
+
+.overlay.hidden {
+    display: none;
+}
+
+.overlay-card {
+    background: #0a0a12;
+    border: 3px solid #f8f6f0;
+    border-radius: 6px;
+    padding: 24px 32px;
+    color: #f8f6f0;
+    text-align: center;
+    max-width: 90vw;
+    min-width: 280px;
+}
+
+.overlay-card h1 {
+    font-size: 20px;
+    margin-bottom: 16px;
+    color: #ffdd44;
+}
+
+.overlay-card h2 {
+    font-size: 16px;
+    margin-bottom: 12px;
+    color: #ffdd44;
+}
+
+.overlay-card p {
+    font-size: 10px;
+    line-height: 1.6;
+    margin-bottom: 20px;
+    color: #ccc;
+}
+
+.overlay-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.overlay-actions button {
+    background: #ffdd44;
+    color: #0a0a12;
+    border: none;
+    border-radius: 4px;
+    padding: 10px 18px;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 10px;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+}
+
+.overlay-actions button:hover {
+    background: #ffee66;
+    transform: scale(1.05);
+}
+
+.overlay-actions button:active {
+    transform: scale(0.98);
+}
+
+.overlay-copy {
+    font-size: 9px;
+    color: #888;
+    margin-top: 16px;
+}
+
+.overlay-card.compact {
+    padding: 16px 24px;
+    min-width: 240px;
+}
+
+#mobile-controls {
+    position: fixed;
+    bottom: 12px;
+    right: 12px;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    z-index: 12;
+}
+
+#mobile-controls button {
+    width: 48px;
+    height: 48px;
+    background: rgba(248, 246, 240, 0.15);
+    border: 2px solid rgba(248, 246, 240, 0.4);
+    border-radius: 8px;
+    color: #f8f6f0;
+    font-size: 18px;
+    font-family: 'Press Start 2P', monospace;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+    -webkit-tap-highlight-color: transparent;
+}
+
+#mobile-controls button:active {
+    background: rgba(255, 221, 68, 0.3);
+    transform: scale(0.92);
+}
+
+.mobile-row {
+    display: flex;
+    gap: 4px;
+}
+
+@media (pointer: coarse) and (max-width: 768px) {
+    #mobile-controls {
+        display: flex;
+    }
+
+    #hint {
+        font-size: 8px;
+        bottom: 64px;
+    }
+}

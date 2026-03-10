@@ -4,430 +4,62 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Run Club Berlin Web Game</title>
+    <title>Run Club Berlin</title>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
-    <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0
-        }
-
-        html,
-        body {
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            background: #0a0a12
-        }
-
-        body {
-            display: flex;
-            align-items: center;
-            justify-content: center
-        }
-
-        #game-canvas {
-            display: block;
-            width: 100vw;
-            height: 100vh;
-            image-rendering: pixelated;
-            image-rendering: crisp-edges
-        }
-
-        #hint {
-            position: fixed;
-            bottom: 8px;
-            left: 50%;
-            transform: translateX(-50%);
-            font-family: 'Press Start 2P', monospace;
-            font-size: 9px;
-            color: rgba(255, 255, 255, 0.4);
-            pointer-events: none;
-            text-align: center
-        }
-    </style>
+    <link rel="stylesheet" href="styles.css">
 </head>
 
 <body>
-    <canvas id="game-canvas"></canvas>
-    <div id="hint">⬆ ⬇ ⬅ ➡ move · SPACE interact</div>
-    <script>
-        var canvas = document.getElementById('game-canvas');
-        var ctx = canvas.getContext('2d');
-        var TILE = 24;
-        var INTERNAL_W = 320;
-        var INTERNAL_H = 240;
-        var buf = document.createElement('canvas');
-        buf.width = INTERNAL_W;
-        buf.height = INTERNAL_H;
-        var bctx = buf.getContext('2d');
-        bctx.imageSmoothingEnabled = false;
-
-        function resize() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-            ctx.imageSmoothingEnabled = false;
-            var aspect = window.innerWidth / window.innerHeight;
-            INTERNAL_H = Math.round(INTERNAL_W / aspect);
-            buf.height = INTERNAL_H;
-        }
-        window.addEventListener('resize', resize);
-        resize();
-
-        var K = {
-            g1: '#6ec46e', g2: '#5db85d', g3: '#4caa4c', g4: '#3d9d3d',
-            p1: '#c4af96', p2: '#b49f86', p3: '#a48f76',
-            t1: '#2d7a3a', t2: '#1d6a2a', t3: '#0d5a1a', trunk: '#8a6530', trunk2: '#7a5520',
-            w1: '#3a8ab0', w2: '#2a7aa0', w3: '#5aaac0',
-            wallC: '#f5eed8', wallC2: '#e5deca', // Cream
-            wallG: '#c0c0c0', wallG2: '#a0a0a0', // Grey
-            roofR: '#e05555', roofR2: '#c04040',
-            roofB: '#4477cc', roofB2: '#3366bb',
-            roofG: '#44aa66', roofG2: '#339955',
-            roofY: '#ddaa33', roofY2: '#cc9922',
-            roofD: '#505050', roofD2: '#404040', // Dark dome
-            door: '#6a4020', doorF: '#8a6040',
-            win: '#6ca8d8', winF: '#3a5868',
-            fen: '#a0a0a0', fen2: '#808080', // Urban fence
-            sgn: '#b49050', sgn2: '#a48040', sgnP: '#8a6530',
-            tkR: '#cc6644', tkL: '#dd9977', tkD: '#bb5533',
-            tg1: '#4da84d', tg2: '#3d983d', tg3: '#2d882d',
-            fl1: '#ff6b8a', fl2: '#ffdd44', fl3: '#ff9eee',
-            black: '#0a0a12', white: '#f8f6f0',
-            dlgBg: '#f8f6f0', dlgBdr: '#2a2a3a', dlgTxt: '#2a2a3a', shadow: '#3a6a3a',
-            skin: '#f8c878', skinD: '#d8a858', hair: '#2a2a3a', hat: '#e83838', hat2: '#c82828',
-            shirt: '#4477cc', shirt2: '#3366bb', pants: '#2a2a3a', shoe: '#cc3333',
-            N: { h: ['#ee8833', '#9955aa', '#f0f0f0'], s1: ['#44aa66', '#ddaa33', '#4477cc'], s2: ['#339955', '#cc9922', '#3366bb'] }
-        };
-
-        var T = {
-            GRASS: 0, PATH: 1, TREE: 2, WALL_C: 3, WALL_G: 4,
-            ROOF_R: 5, ROOF_B: 6, ROOF_G: 7, ROOF_Y: 8, ROOF_D: 9,
-            DOOR: 10, WIN: 11, WATER: 12, FENCE: 13, SIGN: 14,
-            TGRASS: 15, FLOWER: 16, FINISH: 17, TRACK: 18, B_WALL: 19,
-            GATE_COL: 20, GATE_TOP: 21
-        };
-        var SOLID = [T.TREE, T.WALL_C, T.WALL_G, T.DOOR, T.WIN, T.ROOF_R, T.ROOF_B, T.ROOF_G, T.ROOF_Y, T.ROOF_D, T.WATER, T.FENCE, T.B_WALL, T.GATE_COL];
-
-        // 64 x 48 map
-        var MC = 64, MR = 48;
-        var map = new Array(MR).fill(0).map(() => new Array(MC).fill(T.GRASS));
-
-        function stamp(sx, sy, w, h, type) {
-            for (var y = sy; y < sy + h; y++) for (var x = sx; x < sx + w; x++) map[y][x] = type;
-        }
-        function outline(sx, sy, w, h, type) {
-            stamp(sx, sy, w, 1, type); stamp(sx, sy + h - 1, w, 1, type);
-            stamp(sx, sy + 1, 1, h - 2, type); stamp(sx + w - 1, sy + 1, 1, h - 2, type);
-        }
-
-        // 1. River Spree (Top)
-        for (var x = 0; x < MC; x++) {
-            var wY = Math.floor(Math.sin(x * 0.2) * 2) + 4;
-            stamp(x, 0, 1, wY, T.WATER);
-            map[wY][x] = T.PATH;
-        }
-        stamp(0, 5, MC, 2, T.PATH); // Riverside path
-
-        // 2. Borders & Forest
-        outline(0, 0, MC, MR, T.TREE);
-        stamp(0, 0, MC, 1, T.WATER); // Fill top edge
-
-        // 3. Tiergarten (Left)
-        stamp(2, 7, 16, 14, T.TREE);
-        for (var y = 7; y < 21; y++) for (var x = 2; x < 18; x++) if (Math.random() > 0.7 && map[y][x] === T.TREE) map[y][x] = T.TGRASS;
-        stamp(4, 10, 3, 9, T.PATH); stamp(7, 14, 10, 3, T.PATH);
-
-        // 4. Berlin Wall Memorial (Bottom Left)
-        stamp(5, 35, 24, 1, T.B_WALL);
-        stamp(5, 36, 24, 2, T.PATH);
-
-        // 5. Brandenburg Gate (Center-Left)
-        stamp(22, 12, 6, 3, T.PATH);
-        stamp(22, 11, 6, 1, T.GATE_TOP);
-        stamp(22, 12, 1, 2, T.GATE_COL); stamp(24, 12, 1, 2, T.GATE_COL); stamp(27, 12, 1, 2, T.GATE_COL);
-
-        // 6. Bundestag / Reichstag (Center-Top)
-        stamp(30, 7, 12, 6, T.PATH);
-        stamp(31, 8, 10, 4, T.WALL_G);
-        stamp(35, 8, 2, 2, T.ROOF_D); // Dome
-        stamp(34, 11, 4, 1, T.WIN);
-
-        // 7. Track (Bottom Right)
-        stamp(40, 30, 20, 14, T.PATH);
-        outline(41, 31, 18, 12, T.FENCE);
-        outline(42, 32, 16, 10, T.TRACK);
-        outline(43, 33, 14, 8, T.TRACK);
-        stamp(50, 32, 2, 2, T.FINISH);
-
-        // 8. Run Club Buildings (Right City Side)
-        function bldg(x, y, w, h, roof) {
-            stamp(x - 1, y - 1, w + 2, h + 2, T.PATH);
-            stamp(x, y, w, h, T.WALL_C);
-            stamp(x, y - 1, w, 2, roof);
-            stamp(x + 1, y + 1, 1, 1, T.WIN); stamp(x + w - 2, y + 1, 1, 1, T.WIN);
-            stamp(x + Math.floor(w / 2), y + h - 1, 1, 1, T.DOOR);
-        }
-
-        bldg(45, 15, 5, 4, T.ROOF_R); // CIC
-        bldg(53, 12, 6, 4, T.ROOF_B); // Arys
-        bldg(48, 22, 6, 5, T.ROOF_G); // Flat Mtn
-        bldg(35, 24, 5, 4, T.ROOF_Y); // Arys Annex
-
-        // 9. Connecting Paths
-        stamp(28, 14, 20, 2, T.PATH); // East-West Ave
-        stamp(46, 16, 2, 6, T.PATH); // Down from CIC
-        stamp(55, 16, 2, 6, T.PATH); // Down from Arys
-        stamp(35, 22, 20, 2, T.PATH); // Middle East-West
-        stamp(46, 24, 2, 6, T.PATH); // Down to track
-
-        // Scatter Props
-        for (var y = 2; y < MR - 2; y++) {
-            for (var x = 2; x < MC - 2; x++) {
-                if (map[y][x] === T.GRASS && Math.random() < 0.03) map[y][x] = T.FLOWER;
-                if (map[y][x] === T.GRASS && Math.random() < 0.04) map[y][x] = T.TGRASS;
-                if (map[y][x] === T.GRASS && Math.random() < 0.02) map[y][x] = T.TREE;
-            }
-        }
-
-        // Ensure Walkability (Clear trees off paths/doors)
-        for (var y = 0; y < MR; y++) for (var x = 0; x < MC; x++) {
-            if (map[y][x] === T.PATH && Math.random() < 0.05) map[y][x] = T.SIGN; // Random signs
-        }
-        map[15][24] = T.PATH; // Clear gate path
-        map[14][24] = T.PATH;
-
-        // Custom Signs
-        map[16][46] = T.SIGN; map[13][54] = T.SIGN; map[23][50] = T.SIGN; map[25][37] = T.SIGN; map[12][25] = T.SIGN; map[35][20] = T.SIGN;
-
-        var triggers = [
-            { x: 46, y: 17, id: 'cic', text: "CIC BERLIN \nWed 7:00 AM! \nRed roof building." },
-            { x: 55, y: 16, id: 'arys', text: "ARYS STORE \nTuesday 7 PM!" },
-            { x: 50, y: 26, id: 'fm', text: "FLAT MOUNTAIN \nBest running gear." },
-            { x: 37, y: 28, id: 'aa', text: "ARYS ANNEX \nNutrition & vibes." },
-            { x: 40, y: 37, id: 'tk', text: "INTERVAL TRACK \nThu 7 PM Speed." },
-            { x: 25, y: 14, id: 'bg', text: "BRANDENBURG GATE \nIconic finish line!" },
-            { x: 10, y: 6, id: 'sp', text: "SPREE RIVER \nScenic long runs." },
-            { x: 15, y: 35, id: 'bw', text: "BERLIN WALL \nHistoric trail." },
-            { x: 33, y: 12, id: 'rs', text: "REICHSTAG \nParliament views!" }
-        ];
-
-        var npcs = [
-            { x: 45, y: 18, dir: 'up', type: 0, text: "CIC at 7AM. \nCan't oversleep!" },
-            { x: 53, y: 18, dir: 'left', type: 1, text: "Arys run is great \nfor socialization." },
-            { x: 14, y: 6, dir: 'down', type: 2, text: "River breeze is \nperfect today." },
-            { x: 26, y: 14, dir: 'right', type: 0, text: "Just ran through \nthe Gate! PR!" },
-            { x: 48, y: 35, dir: 'left', type: 1, text: "Track day. \nMy legs hurt already." },
-            { x: 20, y: 36, dir: 'up', type: 2, text: "Wall trail is deep \nin history." }
-        ];
-
-        var player = { x: 46, y: 20, px: 46 * TILE, py: 20 * TILE, dir: 0, walking: false, step: 0 };
-        var cam = { x: 0, y: 0 };
-        var dialog = { active: false, text: '', displayedChars: 0, timer: 0, speed: 1, lines: [] };
-        var lastTriggerId = null;
-
-        var particles = [];
-        for (var i = 0; i < 40; i++) particles.push({ x: Math.random() * MC * TILE, y: Math.random() * MR * TILE, vx: (Math.random() - 0.5) * 0.5, vy: -Math.random() * 0.3 - 0.1, size: Math.random() * 2 + 1, a: Math.random() * 0.4 + 0.1, c: ['#fff', '#dfd', '#ffd'][Math.floor(Math.random() * 3)] });
-
-        var keys = {};
-        window.addEventListener('keydown', e => { keys[e.key] = true; if ([' ', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) e.preventDefault(); });
-        window.addEventListener('keyup', e => { keys[e.key] = false; });
-
-        function px(c, x, y, w, h) { w = w || 1; h = h || 1; bctx.fillStyle = c; bctx.fillRect(x, y, w, h); }
-        var animFrame = 0, animTick = 0;
-
-
-        function drawTile(type, tx, ty) {
-            var x = tx * TILE, y = ty * TILE;
-
-            // Base Grass everywhere beneath
-            bctx.fillStyle = ((tx + ty) % 2 === 0) ? K.g1 : K.g2;
-            bctx.fillRect(x, y, TILE, TILE);
-            if (type === T.GRASS) {
-                var s = (tx * 7 + ty * 13) % 6;
-                if (s === 0) px(K.g3, x + 5, y + 6); if (s === 1) px(K.g4, x + 11, y + 3); if (s === 2) px(K.g4, x + 18, y + 8);
-                return;
-            }
-
-            switch (type) {
-                case T.PATH:
-                    bctx.fillStyle = K.p1; bctx.fillRect(x, y, TILE, TILE);
-                    px(K.p2, x, y, TILE, 1); px(K.p2, x, y + TILE - 1, TILE, 1);
-                    break;
-                case T.TREE:
-                    px(K.trunk, x + 9, y + 15, 6, 9); px(K.trunk2, x + 10, y + 15, 4, 9);
-                    bctx.fillStyle = K.t1; bctx.fillRect(x + 2, y + 3, 20, 13); bctx.fillRect(x + 1, y + 5, 22, 9);
-                    bctx.fillStyle = K.t2; bctx.fillRect(x + 4, y + 4, 8, 6); bctx.fillStyle = K.t3; bctx.fillRect(x + 12, y + 10, 8, 5);
-                    break;
-                case T.WALL_C: bctx.fillStyle = K.wallC; bctx.fillRect(x, y, TILE, TILE); px(K.wallC2, x, y + 6, TILE, 1); px(K.wallC2, x, y + 14, TILE, 1); break;
-                case T.WALL_G: bctx.fillStyle = K.wallG; bctx.fillRect(x, y, TILE, TILE); px(K.wallG2, x, y + 6, TILE, 1); px(K.wallG2, x, y + 14, TILE, 1); break;
-                case T.ROOF_R: bctx.fillStyle = K.roofR; bctx.fillRect(x, y, TILE, TILE); px(K.roofR2, x, y + TILE - 4, TILE, 4); break;
-                case T.ROOF_B: bctx.fillStyle = K.roofB; bctx.fillRect(x, y, TILE, TILE); px(K.roofB2, x, y + TILE - 4, TILE, 4); break;
-                case T.ROOF_G: bctx.fillStyle = K.roofG; bctx.fillRect(x, y, TILE, TILE); px(K.roofG2, x, y + TILE - 4, TILE, 4); break;
-                case T.ROOF_Y: bctx.fillStyle = K.roofY; bctx.fillRect(x, y, TILE, TILE); px(K.roofY2, x, y + TILE - 4, TILE, 4); break;
-                case T.ROOF_D: bctx.fillStyle = K.roofD; bctx.fillRect(x, y, TILE, TILE); px(K.roofD2, x + 4, y + 4, 16, 16); bctx.fillStyle = '#88ccff'; bctx.fillRect(x + 8, y + 8, 8, 8); break;
-                case T.DOOR: bctx.fillStyle = K.wallC; bctx.fillRect(x, y, TILE, TILE); bctx.fillStyle = K.door; bctx.fillRect(x + 6, y + 3, 12, 21); break;
-                case T.WIN: bctx.fillStyle = K.wallC; bctx.fillRect(x, y, TILE, TILE); bctx.fillStyle = K.winF; bctx.fillRect(x + 4, y + 4, 16, 16); bctx.fillStyle = K.win; bctx.fillRect(x + 5, y + 5, 14, 14); break;
-                case T.WATER:
-                    bctx.fillStyle = K.w1; bctx.fillRect(x, y, TILE, TILE);
-                    px(K.w3, x + ((4 + animFrame * 6) % 20), y + 5, 4, 1); px(K.w2, x + ((13 + animFrame * 4) % 18), y + 16, 5, 1);
-                    break;
-                case T.FENCE: px(K.fen, x + 3, y, 4, 24); px(K.fen2, x, y + 10, 24, 4); break;
-                case T.SIGN: px(K.sgnP, x + 10, y + 12, 3, 12); bctx.fillStyle = K.sgn; bctx.fillRect(x + 3, y + 3, 18, 10); break;
-                case T.TGRASS: px(K.tg1, x + 4, y + 4, 3, 20); px(K.tg2, x + 10, y + 10, 2, 14); px(K.tg3, x + 16, y + 6, 3, 18); break;
-                case T.FLOWER: px(K.fl1, x + 6, y + 7, 3, 3); px(K.fl2, x + 15, y + 13, 3, 3); break;
-                case T.FINISH: for (var r = 0; r < TILE; r += 4) for (var c = 0; c < TILE; c += 4) { bctx.fillStyle = ((r / 4 + c / 4) % 2 === 0) ? K.white : K.black; bctx.fillRect(x + c, y + r, 4, 4); } break;
-                case T.TRACK: bctx.fillStyle = K.tkR; bctx.fillRect(x, y, TILE, TILE); px(K.tkL, x, y + 11, TILE, 2); break;
-                case T.B_WALL: bctx.fillStyle = '#aaa'; bctx.fillRect(x, y + 6, TILE, 18); px('#888', x, y + 4, TILE, 4); px(K.fl1, x + 4, y + 12, 4, 4); break;
-                case T.GATE_COL: bctx.fillStyle = K.wallC; bctx.fillRect(x + 6, y, 12, TILE); px(K.wallC2, x + 18, y, 2, TILE); break;
-                case T.GATE_TOP: bctx.fillStyle = K.wallC; bctx.fillRect(x, y, TILE, TILE); px(K.roofD, x, y, TILE, 10); break;
-            }
-        }
-
-        function drawSprite(x, y, dir, frame, hc, sc, sc2) {
-            var p = function (c, ox, oy, w, h) { px(c, x + ox, y + oy, w || 1, h || 1); };
-            p(K.shadow, 4, 21, 16, 3);
-            p(hc, 6, 0, 12, 8); p(hc, 4, 2, 16, 5); // hair/hat
-            if (dir !== 1) {
-                p(K.skin, 6, 6, 12, 8);
-                if (dir === 2) p(K.black, 6, 9, 3, 3); else if (dir === 3) p(K.black, 15, 9, 3, 3); else { p(K.black, 7, 9, 3, 3); p(K.black, 14, 9, 3, 3); }
-            }
-            p(sc, 4, 14, 16, 6); p(sc2, 4, 14, 3, 6); p(sc2, 17, 14, 3, 6); // shirt
-            p(K.skin, 3, 15, 1, 3); p(K.skin, 20, 15, 1, 3); // hands
-            if (frame === 0) { p(K.pants, 6, 20, 5, 3); p(K.pants, 13, 20, 5, 3); p(K.shoe, 6, 23, 5, 1); p(K.shoe, 13, 23, 5, 1); }
-            else { p(K.pants, 4, 20, 5, 3); p(K.pants, 15, 20, 5, 3); p(K.shoe, 4, 23, 5, 1); p(K.shoe, 15, 23, 5, 1); }
-        }
-
-        function drawPlayerSprite(x, y, dir, frame) { drawSprite(x, y, dir, frame, K.hat, K.shirt, K.shirt2); }
-        function drawNPCSprite(x, y, dir, t) { drawSprite(x, y, dir === 'up' ? 1 : dir === 'left' ? 2 : dir === 'right' ? 3 : 0, 0, K.N.h[t], K.N.s1[t], K.N.s2[t]); }
-
-        function wordWrap(text, maxWidth) {
-            bctx.font = '8px "Press Start 2P", monospace';
-            var words = text.split(' '), lines = [], line = '';
-            for (var i = 0; i < words.length; i++) {
-                var test = line ? line + ' ' + words[i] : words[i];
-                if (bctx.measureText(test).width > maxWidth && line) { lines.push(line); line = words[i]; } else line = test;
-            }
-            if (line) lines.push(line);
-            return lines;
-        }
-
-        function drawDialogBox() {
-            if (!dialog.active) return;
-            var bx = 4, by = INTERNAL_H - 58, bw = INTERNAL_W - 8, bh = 54;
-            bctx.fillStyle = 'rgba(0,0,0,0.5)'; bctx.fillRect(bx + 2, by + 2, bw, bh);
-            bctx.fillStyle = K.dlgBdr; bctx.fillRect(bx, by, bw, bh);
-            bctx.fillStyle = K.white; bctx.fillRect(bx + 2, by + 2, bw - 4, bh - 4);
-            bctx.fillStyle = K.dlgBdr; bctx.fillRect(bx + 3, by + 3, bw - 6, bh - 6);
-            bctx.fillStyle = K.dlgBg; bctx.fillRect(bx + 5, by + 5, bw - 10, bh - 10);
-
-            if (dialog.lines.length === 0) dialog.lines = wordWrap(dialog.text, bw - 24);
-            var fT = dialog.lines.join('\n');
-            var vT = fT.substring(0, Math.floor(dialog.displayedChars));
-            var vL = vT.split('\n');
-
-            bctx.fillStyle = K.dlgTxt; bctx.font = '8px "Press Start 2P"'; bctx.textBaseline = 'top';
-            for (var i = 0; i < vL.length && i < 4; i++) bctx.fillText(vL[i], bx + 12, by + 10 + i * 11);
-
-            if (dialog.displayedChars >= fT.length && animFrame % 2 === 0) {
-                bctx.fillStyle = K.dlgBdr;
-                bctx.fillRect(bx + bw - 16, by + bh - 14, 6, 4); bctx.fillRect(bx + bw - 15, by + bh - 10, 4, 1); bctx.fillRect(bx + bw - 14, by + bh - 9, 2, 1);
-            }
-        }
-        function showDialog(t) { dialog.active = true; dialog.text = t; dialog.displayedChars = 0; dialog.timer = 0; dialog.lines = []; }
-
-        function updateCamera() { cam.x = Math.max(0, Math.min(player.px - INTERNAL_W / 2 + TILE / 2, MC * TILE - INTERNAL_W)); cam.y = Math.max(0, Math.min(player.py - INTERNAL_H / 2 + TILE / 2, MR * TILE - INTERNAL_H)); }
-
-        var MDX = [0, 0, -1, 1], MDY = [1, -1, 0, 0], SPEED = 2;
-
-        function handleInput() {
-            if (dialog.active) {
-                if (keys[' '] || keys['Enter']) {
-                    var ft = dialog.lines.join('\n');
-                    if (dialog.displayedChars < ft.length) dialog.displayedChars = ft.length; else dialog.active = false;
-                    keys[' '] = false; keys['Enter'] = false;
-                }
-                return;
-            }
-            if (!player.walking) {
-                var dir = -1;
-                if (keys['ArrowDown'] || keys['s']) dir = 0; else if (keys['ArrowUp'] || keys['w']) dir = 1;
-                else if (keys['ArrowLeft'] || keys['a']) dir = 2; else if (keys['ArrowRight'] || keys['d']) dir = 3;
-                if (dir >= 0) {
-                    player.dir = dir;
-                    var nx = player.x + MDX[dir], ny = player.y + MDY[dir];
-                    if (nx >= 0 && nx < MC && ny >= 0 && ny < MR) {
-                        var tile = map[ny][nx];
-                        var npcHere = npcs.find(n => n.x === nx && n.y === ny);
-                        if (!SOLID.includes(tile) && !npcHere) { player.walking = true; player.step = 1 - player.step; }
-                    }
-                }
-                if (keys[' '] || keys['Enter']) {
-                    keys[' '] = false; keys['Enter'] = false;
-                    var fx = player.x + MDX[player.dir], fy = player.y + MDY[player.dir];
-                    var npc = npcs.find(n => n.x === fx && n.y === fy);
-                    if (npc) { showDialog(npc.text); return; }
-                    if (fx >= 0 && fx < MC && fy >= 0 && fy < MR) {
-                        var t = map[fy][fx];
-                        if (t === T.SIGN) showDialog("Sign post: It points the way.");
-                        if (t === T.DOOR) showDialog("It's locked, but you can peek inside.");
-                    }
-                }
-            }
-        }
-
-        function updatePlayer() {
-            if (!player.walking) return;
-            var dx = MDX[player.dir] * SPEED, dy = MDY[player.dir] * SPEED;
-            player.px += dx; player.py += dy;
-            var tx = (player.x + MDX[player.dir]) * TILE, ty = (player.y + MDY[player.dir]) * TILE;
-            if ((dx > 0 && player.px >= tx) || (dx < 0 && player.px <= tx) || (dy > 0 && player.py >= ty) || (dy < 0 && player.py <= ty)) {
-                player.x += MDX[player.dir]; player.y += MDY[player.dir];
-                player.px = player.x * TILE; player.py = player.y * TILE;
-                player.walking = false;
-                var trig = triggers.find(t => player.x >= t.x && player.x < t.x + t.w && player.y >= t.y && player.y < t.y + t.h);
-                if (trig) { if (lastTriggerId !== trig.id && !dialog.active) { lastTriggerId = trig.id; showDialog(trig.text); } }
-                else lastTriggerId = null;
-            }
-        }
-
-        function render() {
-            bctx.fillStyle = K.black; bctx.fillRect(0, 0, INTERNAL_W, INTERNAL_H);
-            updateCamera();
-            var sc = Math.floor(cam.x / TILE), sr = Math.floor(cam.y / TILE), ec = Math.min(sc + Math.ceil(INTERNAL_W / TILE) + 1, MC), er = Math.min(sr + Math.ceil(INTERNAL_H / TILE) + 1, MR);
-            bctx.save(); bctx.translate(-Math.round(cam.x), -Math.round(cam.y));
-            for (var r = sr; r < er; r++) for (var c = sc; c < ec; c++) drawTile(map[r][c], c, r);
-            var ents = [{ type: 'p', y: player.py }];
-            npcs.forEach((n, i) => ents.push({ type: 'n', idx: i, y: n.y * TILE }));
-            ents.sort((a, b) => a.y - b.y).forEach(e => {
-                if (e.type === 'p') drawPlayerSprite(player.px, player.py, player.dir, player.walking ? player.step : 0);
-                else { var n = npcs[e.idx]; drawNPCSprite(n.x * TILE, n.y * TILE, n.dir, n.type); }
-            });
-            particles.forEach(p => {
-                p.x += p.vx; p.y += p.vy; if (p.y < 0) { p.y = MR * TILE; p.x = Math.random() * MC * TILE; } if (p.x < 0) p.x = MC * TILE; if (p.x > MC * TILE) p.x = 0;
-                bctx.globalAlpha = p.a; bctx.fillStyle = p.c; bctx.fillRect(p.x, p.y, p.size, p.size);
-            });
-            bctx.globalAlpha = 1; bctx.restore();
-
-            var grd = bctx.createRadialGradient(INTERNAL_W / 2, INTERNAL_H / 2, INTERNAL_W * 0.4, INTERNAL_W / 2, INTERNAL_H / 2, INTERNAL_W * 0.7);
-            grd.addColorStop(0, 'rgba(0,0,0,0)'); grd.addColorStop(1, 'rgba(0,0,0,0.2)');
-            bctx.fillStyle = grd; bctx.fillRect(0, 0, INTERNAL_W, INTERNAL_H);
-
-            drawDialogBox();
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.drawImage(buf, 0, 0, INTERNAL_W, INTERNAL_H, 0, 0, canvas.width, canvas.height);
-        }
-
-        function loop() {
-            animTick++; if (animTick % 30 === 0) animFrame = (animFrame + 1) % 4;
-            handleInput(); updatePlayer();
-            if (dialog.active && dialog.displayedChars < (dialog.lines.length ? dialog.lines.join('\n').length : dialog.text.length)) if (++dialog.timer >= dialog.speed) { dialog.timer = 0; dialog.displayedChars++; }
-            render();
-            requestAnimationFrame(loop);
-        }
-        loop();
-    </script>
+    <div id="game-shell">
+        <canvas id="game-canvas"></canvas>
+        <div id="hud-top">
+            <div class="panel" id="quest-panel">
+                <div class="panel-label">Berlin Run Quest</div>
+                <div id="quest-progress">0 / 9 spots visited</div>
+                <div id="quest-current">Find the run culture hotspots.</div>
+            </div>
+            <div class="panel" id="status-panel">
+                <div class="panel-label">Status</div>
+                <div id="status-text">Explore the city.</div>
+                <div id="audio-text">Sound: On</div>
+            </div>
+        </div>
+        <div id="location-card" class="hidden">
+            <div id="location-title"></div>
+            <div id="location-subtitle"></div>
+        </div>
+        <div id="hint">Move with arrows or WASD · Space/Enter interact · P pause · M sound</div>
+        <div id="start-screen" class="overlay visible">
+            <div class="overlay-card">
+                <h1>Run Club Berlin</h1>
+                <p>Explore the city, meet runners, and visit every featured spot.</p>
+                <div class="overlay-actions">
+                    <button id="start-button" type="button">Start Run</button>
+                </div>
+                <div class="overlay-copy">Keyboard and touch controls supported.</div>
+            </div>
+        </div>
+        <div id="pause-screen" class="overlay hidden">
+            <div class="overlay-card compact">
+                <h2>Paused</h2>
+                <p>Take a breath, then get back out there.</p>
+                <div class="overlay-actions">
+                    <button id="resume-button" type="button">Resume</button>
+                    <button id="toggle-sound-button" type="button">Toggle Sound</button>
+                </div>
+            </div>
+        </div>
+        <div id="mobile-controls">
+            <button type="button" data-key="ArrowUp">▲</button>
+            <div class="mobile-row">
+                <button type="button" data-key="ArrowLeft">◀</button>
+                <button type="button" data-key="Space">●</button>
+                <button type="button" data-key="ArrowRight">▶</button>
+            </div>
+            <button type="button" data-key="ArrowDown">▼</button>
+        </div>
+    </div>
+    <script src="game.js"></script>
 </body>
 
 </html>
