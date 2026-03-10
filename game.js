@@ -425,10 +425,6 @@
                 togglePause();
                 keys['p'] = keys['P'] = keys['Escape'] = false;
             }
-            if (keys['m'] || keys['M']) {
-                toggleSound();
-                keys['m'] = keys['M'] = false;
-            }
         }
     }
 
@@ -566,11 +562,6 @@
         }
     }
 
-    function toggleSound() {
-        // Sound is disabled
-        document.getElementById('audio-text').textContent = 'Sound: Off';
-    }
-
     function saveGame() {
         const save = {
             player: { x: player.x, y: player.y },
@@ -625,7 +616,6 @@
         setTimeout(() => document.getElementById('start-screen').classList.add('hidden'), 300);
     });
     document.getElementById('resume-button').addEventListener('click', togglePause);
-    document.getElementById('toggle-sound-button').addEventListener('click', toggleSound);
 
     document.querySelectorAll('#mobile-controls button').forEach(btn => {
         btn.addEventListener('touchstart', e => {
