@@ -13,29 +13,29 @@
     bctx.imageSmoothingEnabled = false;
 
     const K = {
-        g1: '#6ec46e', g2: '#5db85d', g3: '#4caa4c', g4: '#3d9d3d',
-        p1: '#c4af96', p2: '#b49f86', p3: '#a48f76',
-        t1: '#2d7a3a', t2: '#1d6a2a', t3: '#0d5a1a', trunk: '#8a6530', trunk2: '#7a5520',
-        w1: '#3a8ab0', w2: '#2a7aa0', w3: '#5aaac0',
-        wallC: '#f5eed8', wallC2: '#e5deca',
-        wallG: '#c0c0c0', wallG2: '#a0a0a0',
-        roofR: '#e05555', roofR2: '#c04040',
-        roofB: '#4477cc', roofB2: '#3366bb',
-        roofG: '#44aa66', roofG2: '#339955',
-        roofY: '#ddaa33', roofY2: '#cc9922',
-        roofD: '#505050', roofD2: '#404040',
-        door: '#6a4020', doorF: '#8a6040',
-        win: '#6ca8d8', winF: '#3a5868',
-        fen: '#a0a0a0', fen2: '#808080',
-        sgn: '#b49050', sgn2: '#a48040', sgnP: '#8a6530',
-        tkR: '#cc6644', tkL: '#dd9977', tkD: '#bb5533',
-        tg1: '#4da84d', tg2: '#3d983d', tg3: '#2d882d',
-        fl1: '#ff6b8a', fl2: '#ffdd44', fl3: '#ff9eee',
-        black: '#0a0a12', white: '#f8f6f0',
-        dlgBg: '#f8f6f0', dlgBdr: '#2a2a3a', dlgTxt: '#2a2a3a', shadow: '#3a6a3a',
-        skin: '#f8c878', skinD: '#d8a858', hair: '#2a2a3a', hat: '#e83838', hat2: '#c82828',
-        shirt: '#4477cc', shirt2: '#3366bb', pants: '#2a2a3a', shoe: '#cc3333',
-        N: { h: ['#ee8833', '#9955aa', '#f0f0f0'], s1: ['#44aa66', '#ddaa33', '#4477cc'], s2: ['#339955', '#cc9922', '#3366bb'] }
+        g1: '#24383d', g2: '#1b2c33', g3: '#2f4d55', g4: '#102026',
+        p1: '#4d4258', p2: '#3a3347', p3: '#665870',
+        t1: '#1f5d55', t2: '#15433d', t3: '#0d2826', trunk: '#5b3a2a', trunk2: '#3c241b',
+        w1: '#1f4f74', w2: '#173d5a', w3: '#46a7d8',
+        wallC: '#c9c0d8', wallC2: '#a79ab7',
+        wallG: '#646a82', wallG2: '#505669',
+        roofR: '#a33b68', roofR2: '#732744',
+        roofB: '#3657a6', roofB2: '#243b70',
+        roofG: '#1f7a73', roofG2: '#14524d',
+        roofY: '#ba7a1f', roofY2: '#885615',
+        roofD: '#242433', roofD2: '#151520',
+        door: '#3b2230', doorF: '#6a4360',
+        win: '#69d8ff', winF: '#14263c',
+        fen: '#7b7489', fen2: '#534d60',
+        sgn: '#ff4fa3', sgn2: '#6b183f', sgnP: '#29101e',
+        tkR: '#5f3157', tkL: '#ff5ca8', tkD: '#34152f',
+        tg1: '#1d7462', tg2: '#145948', tg3: '#0d4033',
+        fl1: '#ff4fa3', fl2: '#34d7ff', fl3: '#ffd166',
+        black: '#090811', white: '#f7f2ff',
+        dlgBg: '#f7f2ff', dlgBdr: '#1c1530', dlgTxt: '#1c1530', shadow: 'rgba(0,0,0,0.28)',
+        skin: '#f2bf8c', skinD: '#c88b59', hair: '#120f1f', hat: '#ff4fa3', hat2: '#c71d6d',
+        shirt: '#34d7ff', shirt2: '#1389b7', pants: '#161828', shoe: '#ff5ca8',
+        N: { h: ['#ff9f1c', '#9b5cff', '#f7f2ff'], s1: ['#00d1b2', '#ff5ca8', '#4c7dff'], s2: ['#0d8b78', '#a91b68', '#2948b8'] }
     };
 
     const T = {
@@ -58,81 +58,119 @@
         stamp(sx, sy + 1, 1, h - 2, type); stamp(sx + w - 1, sy + 1, 1, h - 2, type);
     }
 
-    for (let x = 0; x < MC; x++) {
-        const wY = Math.floor(Math.sin(x * 0.25) * 1.5) + 3;
-        stamp(x, 0, 1, wY, T.WATER);
-        map[wY][x] = T.PATH;
+    function fillRectSafe(sx, sy, w, h, type) {
+        for (let y = sy; y < sy + h; y++) {
+            if (y < 0 || y >= MR) continue;
+            for (let x = sx; x < sx + w; x++) {
+                if (x < 0 || x >= MC) continue;
+                map[y][x] = type;
+            }
+        }
     }
-    stamp(0, 4, MC, 2, T.PATH);
+
+    function carveRoadH(y, x1, x2, width = 2) {
+        fillRectSafe(x1, y, x2 - x1 + 1, width, T.PATH);
+    }
+
+    function carveRoadV(x, y1, y2, width = 2) {
+        fillRectSafe(x, y1, width, y2 - y1 + 1, T.PATH);
+    }
+
+    function placeBuilding(x, y, w, h, roof, wall = T.WALL_C) {
+        fillRectSafe(x - 1, y - 1, w + 2, h + 2, T.PATH);
+        fillRectSafe(x, y, w, h, wall);
+        fillRectSafe(x, y - 2, w, 2, roof);
+        for (let wx = x + 1; wx < x + w - 1; wx += 2) {
+            if (wx !== x + Math.floor(w / 2)) fillRectSafe(wx, y + 1, 1, 1, T.WIN);
+        }
+        fillRectSafe(x + Math.floor(w / 2), y + h - 1, 1, 1, T.DOOR);
+    }
+
+    function addPocketPark(x, y, w, h) {
+        fillRectSafe(x, y, w, h, T.GRASS);
+        for (let py = y; py < y + h; py++) {
+            for (let px = x; px < x + w; px++) {
+                const seed = (px * 19 + py * 23) % 9;
+                if (seed === 0) map[py][px] = T.TGRASS;
+                if (seed === 1) map[py][px] = T.FLOWER;
+            }
+        }
+    }
+
+    for (let x = 0; x < MC; x++) {
+        const riverDepth = 3 + Math.floor(Math.sin(x * 0.3) + Math.sin(x * 0.13));
+        fillRectSafe(x, 0, 1, Math.max(2, riverDepth), T.WATER);
+        map[Math.max(2, riverDepth)][x] = T.PATH;
+    }
 
     outline(0, 0, MC, MR, T.TREE);
-    stamp(0, 0, MC, 1, T.WATER);
+    fillRectSafe(0, 0, MC, 1, T.WATER);
 
-    stamp(2, 6, 12, 10, T.TREE);
-    for (let y = 6; y < 16; y++) for (let x = 2; x < 14; x++) if (Math.random() > 0.75 && map[y][x] === T.TREE) map[y][x] = T.TGRASS;
-    stamp(4, 9, 3, 6, T.PATH); stamp(7, 12, 6, 2, T.PATH);
+    carveRoadH(5, 0, MC - 1, 2);
+    carveRoadV(24, 5, MR - 5, 2);
+    carveRoadH(17, 15, 42, 2);
+    carveRoadH(23, 24, 46, 2);
+    carveRoadH(28, 4, 30, 2);
+    carveRoadV(38, 10, 31, 2);
+    carveRoadV(30, 16, 30, 2);
 
-    stamp(4, 28, 18, 1, T.B_WALL);
-    stamp(4, 29, 18, 2, T.PATH);
+    fillRectSafe(2, 8, 11, 9, T.TREE);
+    fillRectSafe(14, 8, 8, 6, T.TGRASS);
+    fillRectSafe(3, 27, 18, 1, T.B_WALL);
+    fillRectSafe(3, 28, 18, 2, T.PATH);
+    addPocketPark(14, 24, 7, 4);
+    addPocketPark(10, 18, 5, 4);
 
-    stamp(18, 10, 5, 2, T.PATH);
-    stamp(18, 9, 5, 1, T.GATE_TOP);
-    stamp(18, 10, 1, 2, T.GATE_COL); stamp(20, 10, 1, 2, T.GATE_COL); stamp(22, 10, 1, 2, T.GATE_COL);
+    fillRectSafe(18, 10, 6, 3, T.PATH);
+    fillRectSafe(18, 9, 6, 1, T.GATE_TOP);
+    fillRectSafe(18, 10, 1, 2, T.GATE_COL);
+    fillRectSafe(20, 10, 1, 2, T.GATE_COL);
+    fillRectSafe(23, 10, 1, 2, T.GATE_COL);
 
-    stamp(24, 6, 8, 4, T.PATH);
-    stamp(25, 7, 6, 3, T.WALL_G);
-    stamp(27, 7, 2, 1, T.ROOF_D);
-    stamp(26, 9, 3, 1, T.WIN);
+    placeBuilding(29, 9, 6, 5, T.ROOF_D, T.WALL_G);
+    placeBuilding(35, 10, 6, 5, T.ROOF_R, T.WALL_C);
+    placeBuilding(42, 9, 5, 5, T.ROOF_B, T.WALL_G);
+    placeBuilding(33, 18, 6, 5, T.ROOF_G, T.WALL_C);
+    placeBuilding(41, 18, 6, 5, T.ROOF_R, T.WALL_G);
+    placeBuilding(27, 22, 7, 5, T.ROOF_Y, T.WALL_C);
+    placeBuilding(27, 29, 6, 4, T.ROOF_D, T.WALL_G);
 
-    stamp(32, 24, 15, 10, T.PATH);
+    fillRectSafe(31, 8, 14, 1, T.PATH);
+    fillRectSafe(31, 15, 14, 1, T.PATH);
+    fillRectSafe(31, 16, 16, 1, T.PATH);
+    fillRectSafe(32, 24, 15, 10, T.PATH);
     outline(33, 25, 13, 8, T.FENCE);
     outline(34, 26, 11, 6, T.TRACK);
     outline(35, 27, 9, 4, T.TRACK);
-    stamp(39, 27, 2, 2, T.FINISH);
+    fillRectSafe(39, 27, 2, 2, T.FINISH);
 
-    function bldg(x, y, w, h, roof) {
-        stamp(x - 1, y - 1, w + 2, h + 2, T.PATH);
-        stamp(x, y, w, h, T.WALL_C);
-        stamp(x, y - 1, w, 1, roof);
-        const winY = y + 1;
-        if (w >= 4) {
-            stamp(x + 1, winY, 1, 1, T.WIN);
-            stamp(x + w - 2, winY, 1, 1, T.WIN);
-        }
-        stamp(x + Math.floor(w / 2), y + h - 1, 1, 1, T.DOOR);
-    }
-
-    bldg(36, 12, 5, 4, T.ROOF_R);
-    bldg(42, 10, 5, 4, T.ROOF_B);
-    bldg(38, 18, 5, 4, T.ROOF_G);
-    bldg(28, 19, 5, 4, T.ROOF_Y);
-
-    stamp(24, 12, 15, 2, T.PATH);
-    stamp(37, 14, 2, 4, T.PATH);
-    stamp(43, 14, 2, 4, T.PATH);
-    stamp(28, 18, 15, 2, T.PATH);
-    stamp(38, 20, 2, 4, T.PATH);
+    fillRectSafe(37, 22, 4, 3, T.PATH);
+    fillRectSafe(36, 21, 6, 1, T.SIGN);
+    fillRectSafe(28, 27, 4, 2, T.PATH);
+    fillRectSafe(29, 28, 1, 1, T.SIGN);
 
     for (let y = 2; y < MR - 2; y++) {
         for (let x = 2; x < MC - 2; x++) {
-            if (map[y][x] === T.GRASS && Math.random() < 0.02) map[y][x] = T.FLOWER;
-            if (map[y][x] === T.GRASS && Math.random() < 0.03) map[y][x] = T.TGRASS;
-            if (map[y][x] === T.GRASS && Math.random() < 0.015) map[y][x] = T.TREE;
+            if (map[y][x] !== T.GRASS) continue;
+            const seed = (x * 37 + y * 17) % 100;
+            if (seed < 2) map[y][x] = T.FLOWER;
+            else if (seed < 7) map[y][x] = T.TGRASS;
+            else if (seed === 12 || seed === 19) map[y][x] = T.TREE;
         }
     }
 
-    map[13][37] = T.SIGN;
-    map[11][43] = T.SIGN;
-    map[19][39] = T.SIGN;
-    map[20][29] = T.SIGN;
-    map[10][20] = T.SIGN;
-    map[29][16] = T.SIGN;
+    map[11][20] = T.SIGN;
+    map[10][32] = T.SIGN;
+    map[11][44] = T.SIGN;
+    map[20][35] = T.SIGN;
+    map[20][43] = T.SIGN;
+    map[28][15] = T.SIGN;
 
     const triggers = [
-        { x: 37, y: 14, w: 1, h: 1, id: 'cic', name: 'CIC Berlin', subtitle: 'Wed 7:00 AM · Red roof' },
-        { x: 43, y: 13, w: 1, h: 1, id: 'arys', name: 'Arys Store', subtitle: 'Tue 7 PM · Gear hub' },
-        { x: 39, y: 21, w: 1, h: 1, id: 'fm', name: 'Flat Mountain', subtitle: 'Running gear' },
-        { x: 29, y: 22, w: 1, h: 1, id: 'aa', name: 'Arys Annex', subtitle: 'Nutrition & vibes' },
+        { x: 38, y: 15, w: 1, h: 1, id: 'cic', name: 'CIC Berlin', subtitle: 'Wed 7:00 AM · Neon sessions' },
+        { x: 44, y: 14, w: 1, h: 1, id: 'arys', name: 'Arys Store', subtitle: 'Tue 7 PM · Gear hub' },
+        { x: 43, y: 23, w: 1, h: 1, id: 'fm', name: 'Flat Mountain', subtitle: 'Running gear' },
+        { x: 30, y: 30, w: 1, h: 1, id: 'aa', name: 'Arys Annex', subtitle: 'Nutrition & vibes' },
         { x: 32, y: 29, w: 1, h: 1, id: 'tk', name: 'Interval Track', subtitle: 'Thu 7 PM Speed' },
         { x: 20, y: 11, w: 1, h: 1, id: 'bg', name: 'Brandenburg Gate', subtitle: 'Iconic finish line' },
         { x: 8, y: 5, w: 1, h: 1, id: 'sp', name: 'Spree River', subtitle: 'Scenic long runs' },
@@ -141,8 +179,8 @@
     ];
 
     const npcs = [
-        { x: 36, y: 15, dir: 'up', type: 0, baseText: "CIC at 7AM. Can't oversleep!", altText: "Join us for intervals!" },
-        { x: 42, y: 15, dir: 'left', type: 1, baseText: "Arys run is great for socialization.", altText: "New shoes just dropped." },
+        { x: 37, y: 16, dir: 'up', type: 0, baseText: "CIC at 7AM. Can't oversleep!", altText: "Join us for intervals!" },
+        { x: 43, y: 16, dir: 'left', type: 1, baseText: "Arys run is great for socialization.", altText: "New shoes just dropped." },
         { x: 11, y: 5, dir: 'down', type: 2, baseText: "River breeze is perfect today.", altText: "Morning laps here are gold." },
         { x: 21, y: 12, dir: 'right', type: 0, baseText: "Just ran through the Gate! PR!", altText: "Try it at sunset!" },
         { x: 38, y: 28, dir: 'left', type: 1, baseText: "Track day. My legs hurt already.", altText: "400m repeats today. Oof." },
@@ -150,7 +188,7 @@
         { x: 24, y: 8, dir: 'up', type: 0, baseText: "Reichstag loop is 5k exactly.", altText: "Tourists always get in the way." },
         { x: 10, y: 20, dir: 'right', type: 1, baseText: "Tiergarten is best at dawn.", altText: "Watch out for bikers!" },
         { x: 45, y: 16, dir: 'down', type: 2, baseText: "Arys has gels on sale.", altText: "I prefer flat laces." },
-        { x: 34, y: 31, dir: 'left', type: 0, baseText: "Track closed on Mondays.", altText: "Bring spikes for winter." }
+        { x: 31, y: 31, dir: 'left', type: 0, baseText: "Track closed on Mondays.", altText: "Bring spikes for winter." }
     ];
 
     const randomEvents = [
@@ -169,7 +207,7 @@
         { name: "Sunset Loop", startHour: 20, durationMinutes: 50, location: 'bg', message: "Sunset Brandenburg Loop!" }
     ];
 
-    const player = { x: 37, y: 16, px: 37 * TILE, py: 16 * TILE, dir: 0, walking: false, step: 0 };
+    const player = { x: 38, y: 16, px: 38 * TILE, py: 16 * TILE, dir: 0, walking: false, step: 0 };
     const cam = { x: 0, y: 0 };
     const dialog = { active: false, text: '', displayedChars: 0, timer: 0, speed: 1, lines: [], autoClose: 0 };
     let lastTriggerId = null;
@@ -217,120 +255,149 @@
         bctx.fillRect(x, y, TILE, TILE);
         if (type === T.GRASS) {
             const s = (tx * 7 + ty * 13) % 6;
-            if (s === 0) px(K.g3, x + 5, y + 6); if (s === 1) px(K.g4, x + 11, y + 3); if (s === 2) px(K.g4, x + 18, y + 8);
+            px(K.g4, x, y + TILE - 4, TILE, 2);
+            if (s === 0) px(K.g3, x + 5, y + 6, 4, 4);
+            if (s === 1) px(K.g4, x + 11, y + 3, 4, 3);
+            if (s === 2) px(K.g4, x + 18, y + 8, 5, 4);
+            if (s === 3) px('#2c5962', x + 22, y + 20, 3, 3);
             return;
         }
 
         switch (type) {
             case T.PATH:
                 bctx.fillStyle = K.p1; bctx.fillRect(x, y, TILE, TILE);
-                px(K.p2, x, y, TILE, 1); px(K.p2, x, y + TILE - 1, TILE, 1);
+                px(K.p2, x, y, TILE, 2); px(K.p2, x, y + TILE - 2, TILE, 2);
+                px(K.p3, x + 3, y + 6, TILE - 6, 2); px(K.p3, x + 6, y + 18, TILE - 12, 2);
+                px('#756785', x + 4, y + 27, TILE - 8, 1);
                 break;
             case T.TREE:
-                px(K.trunk, x + 9, y + 15, 6, 9); px(K.trunk2, x + 10, y + 15, 4, 9);
-                bctx.fillStyle = K.t1; bctx.fillRect(x + 2, y + 3, 20, 13); bctx.fillRect(x + 1, y + 5, 22, 9);
-                bctx.fillStyle = K.t2; bctx.fillRect(x + 4, y + 4, 8, 6); bctx.fillStyle = K.t3; bctx.fillRect(x + 12, y + 10, 8, 5);
+                px(K.trunk, x + 12, y + 19, 8, 11); px(K.trunk2, x + 14, y + 19, 4, 11);
+                bctx.fillStyle = K.t1; bctx.fillRect(x + 4, y + 4, 24, 14); bctx.fillRect(x + 2, y + 8, 28, 10);
+                bctx.fillStyle = K.t2; bctx.fillRect(x + 6, y + 6, 10, 7); bctx.fillStyle = K.t3; bctx.fillRect(x + 16, y + 11, 10, 6);
                 const sway = Math.sin(animFrame * 0.05 + tx) * 1;
-                bctx.fillStyle = K.t2; bctx.fillRect(x + 4 + sway, y + 4, 8, 6);
+                bctx.fillStyle = K.t2; bctx.fillRect(x + 6 + sway, y + 6, 10, 7);
                 break;
             case T.WALL_C:
                 bctx.fillStyle = K.wallC; bctx.fillRect(x, y, TILE, TILE);
-                px(K.wallC2, x, y + 4, TILE, 2); px(K.wallC2, x, y + 10, TILE, 2); px(K.wallC2, x, y + 16, TILE, 2);
-                px('#d5c5aa', x + 2, y + 2, 2, 2); px('#d5c5aa', x + 20, y + 2, 2, 2);
-                px('#ddd0b8', x, y, TILE, 1); px('#e0d5c0', x, y, 1, TILE); px('#cfc0a8', x + TILE - 1, y, 1, TILE);
+                px(K.wallC2, x, y + 6, TILE, 2); px(K.wallC2, x, y + 14, TILE, 2); px(K.wallC2, x, y + 22, TILE, 2);
+                px('#f3ecff', x, y, TILE, 2); px('#87799f', x + TILE - 2, y, 2, TILE);
+                px('#ff74bf', x + 3, y + TILE - 6, TILE - 6, 2);
+                px('#e7ddf7', x + 4, y + 9, 2, 2); px('#e7ddf7', x + 24, y + 17, 2, 2);
                 break;
             case T.WALL_G:
                 bctx.fillStyle = K.wallG; bctx.fillRect(x, y, TILE, TILE);
-                px(K.wallG2, x, y + 4, TILE, 2); px(K.wallG2, x, y + 10, TILE, 2); px(K.wallG2, x, y + 16, TILE, 2);
-                px('#b0b0b0', x + 3, y + 3, 2, 2); px('#b0b0b0', x + 18, y + 3, 2, 2);
-                px('#d0d0d0', x, y, TILE, 1); px('#d5d5d5', x, y, 1, TILE); px('#909090', x + TILE - 1, y, 1, TILE);
+                px(K.wallG2, x, y + 6, TILE, 2); px(K.wallG2, x, y + 14, TILE, 2); px(K.wallG2, x, y + 22, TILE, 2);
+                px('#93a0bf', x, y, TILE, 2); px('#2d3240', x + TILE - 2, y, 2, TILE);
+                px('#34d7ff', x + 3, y + TILE - 6, TILE - 6, 2);
+                px('#7e8cae', x + 4, y + 9, 2, 2); px('#7e8cae', x + 24, y + 17, 2, 2);
                 break;
             case T.ROOF_R:
                 bctx.fillStyle = K.roofR; bctx.fillRect(x, y, TILE, TILE);
-                px(K.roofR2, x, y + TILE - 6, TILE, 6);
-                for (let i = 0; i < TILE; i += 3) px('#d04545', x + i, y + 3, 1, 2);
-                px('#f06565', x + 2, y + 2, TILE - 4, 1);
+                px(K.roofR2, x, y + TILE - 7, TILE, 7);
+                for (let i = 0; i < TILE; i += 4) px('#ff74bf', x + i, y + 5, 2, 2);
+                px('#f8a7d0', x + 3, y + 3, TILE - 6, 2);
+                px('#5a1932', x, y + TILE - 2, TILE, 2);
                 break;
             case T.ROOF_B:
                 bctx.fillStyle = K.roofB; bctx.fillRect(x, y, TILE, TILE);
-                px(K.roofB2, x, y + TILE - 6, TILE, 6);
-                for (let i = 0; i < TILE; i += 3) px('#2255aa', x + i, y + 3, 1, 2);
-                px('#5588dd', x + 2, y + 2, TILE - 4, 1);
+                px(K.roofB2, x, y + TILE - 7, TILE, 7);
+                for (let i = 0; i < TILE; i += 4) px('#34d7ff', x + i, y + 5, 2, 2);
+                px('#86e7ff', x + 3, y + 3, TILE - 6, 2);
+                px('#17274f', x, y + TILE - 2, TILE, 2);
                 break;
             case T.ROOF_G:
                 bctx.fillStyle = K.roofG; bctx.fillRect(x, y, TILE, TILE);
-                px(K.roofG2, x, y + TILE - 6, TILE, 6);
-                for (let i = 0; i < TILE; i += 3) px('#339955', x + i, y + 3, 1, 2);
-                px('#55bb77', x + 2, y + 2, TILE - 4, 1);
+                px(K.roofG2, x, y + TILE - 7, TILE, 7);
+                for (let i = 0; i < TILE; i += 4) px('#2fffd5', x + i, y + 5, 2, 2);
+                px('#7bf7e4', x + 3, y + 3, TILE - 6, 2);
+                px('#0f352f', x, y + TILE - 2, TILE, 2);
                 break;
             case T.ROOF_Y:
                 bctx.fillStyle = K.roofY; bctx.fillRect(x, y, TILE, TILE);
-                px(K.roofY2, x, y + TILE - 6, TILE, 6);
-                for (let i = 0; i < TILE; i += 3) px('#bb8822', x + i, y + 3, 1, 2);
-                px('#eebb44', x + 2, y + 2, TILE - 4, 1);
+                px(K.roofY2, x, y + TILE - 7, TILE, 7);
+                for (let i = 0; i < TILE; i += 4) px('#ffd166', x + i, y + 5, 2, 2);
+                px('#ffe29a', x + 3, y + 3, TILE - 6, 2);
+                px('#4e3208', x, y + TILE - 2, TILE, 2);
                 break;
-            case T.ROOF_D: bctx.fillStyle = K.roofD; bctx.fillRect(x, y, TILE, TILE); px(K.roofD2, x + 4, y + 4, 16, 16); bctx.fillStyle = '#88ccff'; bctx.fillRect(x + 8, y + 8, 8, 8); break;
+            case T.ROOF_D:
+                bctx.fillStyle = K.roofD; bctx.fillRect(x, y, TILE, TILE);
+                px(K.roofD2, x + 4, y + 5, TILE - 8, TILE - 10);
+                px('#ff4fa3', x + 4, y + TILE - 8, TILE - 8, 2);
+                px('#7c6cff', x + 6, y + 6, TILE - 12, 2);
+                px('#05050b', x, y + TILE - 2, TILE, 2);
+                break;
             case T.DOOR:
                 bctx.fillStyle = K.wallC; bctx.fillRect(x, y, TILE, TILE);
-                bctx.fillStyle = K.door; bctx.fillRect(x + 6, y + 4, 12, 20);
-                px('#5a3010', x + 7, y + 5, 10, 18);
-                px('#7a5030', x + 8, y + 6, 8, 16);
-                px('#4a2800', x + 15, y + 12, 2, 3);
-                px('#8a7060', x + 9, y + 7, 6, 2);
+                bctx.fillStyle = K.door; bctx.fillRect(x + 9, y + 6, 14, 24);
+                px(K.doorF, x + 10, y + 8, 12, 20);
+                px('#ff4fa3', x + 12, y + 10, 8, 2);
+                px('#f7f2ff', x + 19, y + 18, 2, 3);
                 break;
             case T.WIN:
                 bctx.fillStyle = K.wallC; bctx.fillRect(x, y, TILE, TILE);
-                bctx.fillStyle = K.winF; bctx.fillRect(x + 4, y + 4, 16, 16);
-                bctx.fillStyle = K.win; bctx.fillRect(x + 5, y + 5, 14, 14);
-                px('#5a98c8', x + 6, y + 6, 6, 6); px('#5a98c8', x + 13, y + 6, 6, 6);
-                px('#5a98c8', x + 6, y + 13, 6, 6); px('#5a98c8', x + 13, y + 13, 6, 6);
-                px('#2a4858', x + 11, y + 5, 2, 14); px('#2a4858', x + 5, y + 11, 14, 2);
-                px('#88d0ff', x + 7, y + 7, 3, 3); px('#88d0ff', x + 14, y + 7, 3, 3);
+                bctx.fillStyle = K.winF; bctx.fillRect(x + 5, y + 6, 22, 16);
+                bctx.fillStyle = K.win; bctx.fillRect(x + 7, y + 8, 18, 12);
+                px('#c7f5ff', x + 8, y + 9, 6, 4); px('#7c6cff', x + 16, y + 9, 7, 4);
+                px('#14374f', x + 15, y + 8, 2, 12); px('#14374f', x + 7, y + 13, 18, 2);
+                px('#f7f2ff', x + 6, y + 7, 20, 1);
                 break;
             case T.WATER:
                 bctx.fillStyle = K.w1; bctx.fillRect(x, y, TILE, TILE);
-                px(K.w3, x + ((4 + animFrame * 6) % 20), y + 5, 4, 1); px(K.w2, x + ((13 + animFrame * 4) % 18), y + 16, 5, 1);
+                px(K.w3, x + ((4 + animFrame * 6) % 24), y + 7, 6, 2); px(K.w2, x + ((13 + animFrame * 4) % 22), y + 18, 7, 2);
+                px('#7c6cff', x + 2, y + TILE - 5, TILE - 4, 2);
+                px('#9cecff', x + 5, y + 4, 7, 2);
                 break;
-            case T.FENCE: px(K.fen, x + 3, y, 4, 24); px(K.fen2, x, y + 10, 24, 4); break;
+            case T.FENCE:
+                px(K.fen, x + 5, y, 4, TILE); px(K.fen, x + TILE - 9, y, 4, TILE); px(K.fen2, x, y + 12, TILE, 4);
+                px('#ff4fa3', x + 2, y + 8, TILE - 4, 2);
+                break;
             case T.SIGN:
-                px('#000', x + 1, y + 15, 6, 2);
-                px(K.sgnP, x + 10, y + 14, 4, 10);
-                px('#6a4520', x + 11, y + 15, 2, 9);
-                bctx.fillStyle = '#fff'; bctx.fillRect(x + 1, y + 1, 22, 14);
-                bctx.fillStyle = '#2a7a2a'; bctx.fillRect(x + 3, y + 3, 18, 10);
-                px('#1a5a1a', x + 3, y + 11, 18, 2);
-                px('#3a9a3a', x + 3, y + 3, 18, 1);
-                px('#fff', x + 5, y + 5, 2, 2); px('#fff', x + 9, y + 5, 2, 2); px('#fff', x + 13, y + 5, 2, 2); px('#fff', x + 17, y + 5, 2, 2);
-                px('#fff', x + 6, y + 8, 10, 2);
+                px('rgba(0,0,0,0.35)', x + 6, y + 24, 12, 3);
+                px(K.sgnP, x + 13, y + 15, 5, 15);
+                bctx.fillStyle = K.sgn2; bctx.fillRect(x + 3, y + 4, 26, 12);
+                bctx.fillStyle = K.sgn; bctx.fillRect(x + 5, y + 6, 22, 8);
+                px('#f7f2ff', x + 7, y + 8, 18, 1); px('#34d7ff', x + 9, y + 11, 14, 1);
+                px('#f7f2ff', x + 24, y + 8, 1, 4);
                 break;
-            case T.TGRASS: px(K.tg1, x + 4, y + 4, 3, 20); px(K.tg2, x + 10, y + 10, 2, 14); px(K.tg3, x + 16, y + 6, 3, 18); break;
+            case T.TGRASS: px(K.tg1, x + 6, y + 4, 4, 24); px(K.tg2, x + 14, y + 10, 3, 16); px(K.tg3, x + 22, y + 6, 4, 20); break;
             case T.FLOWER:
                 const petal = (animFrame + tx * ty) % 3;
-                px([K.fl1, K.fl2, K.fl3][petal], x + 6, y + 7, 3, 3);
-                px(K.fl2, x + 15, y + 13, 3, 3);
+                px([K.fl1, K.fl2, K.fl3][petal], x + 8, y + 8, 4, 4);
+                px(K.fl2, x + 18, y + 15, 4, 4);
                 break;
             case T.FINISH:
                 for (let r = 0; r < TILE; r += 4) for (let c = 0; c < TILE; c += 4) { bctx.fillStyle = ((r / 4 + c / 4) % 2 === 0) ? K.white : K.black; bctx.fillRect(x + c, y + r, 4, 4); }
+                px('#ff4fa3', x, y + TILE - 4, TILE, 2);
                 break;
-            case T.TRACK: bctx.fillStyle = K.tkR; bctx.fillRect(x, y, TILE, TILE); px(K.tkL, x, y + 11, TILE, 2); break;
-            case T.B_WALL: bctx.fillStyle = '#aaa'; bctx.fillRect(x, y + 6, TILE, 18); px('#888', x, y + 4, TILE, 4); px(K.fl1, x + 4, y + 12, 4, 4); break;
-            case T.GATE_COL: bctx.fillStyle = K.wallC; bctx.fillRect(x + 6, y, 12, TILE); px(K.wallC2, x + 18, y, 2, TILE); break;
-            case T.GATE_TOP: bctx.fillStyle = K.wallC; bctx.fillRect(x, y, TILE, TILE); px(K.roofD, x, y, TILE, 10); break;
+            case T.TRACK: bctx.fillStyle = K.tkR; bctx.fillRect(x, y, TILE, TILE); px(K.tkL, x, y + 13, TILE, 3); px(K.tkD, x, y + TILE - 5, TILE, 2); break;
+            case T.B_WALL: bctx.fillStyle = '#7d7a8b'; bctx.fillRect(x, y + 8, TILE, 20); px('#4e495a', x, y + 5, TILE, 5); px(K.fl1, x + 5, y + 13, 5, 5); px('#34d7ff', x + 16, y + 16, 4, 4); break;
+            case T.GATE_COL: bctx.fillStyle = K.wallC; bctx.fillRect(x + 8, y, 16, TILE); px(K.wallC2, x + 22, y, 2, TILE); px('#ff4fa3', x + 8, y + 8, 16, 2); break;
+            case T.GATE_TOP: bctx.fillStyle = K.wallC; bctx.fillRect(x, y, TILE, TILE); px(K.roofD, x, y, TILE, 12); px('#34d7ff', x + 3, y + 14, TILE - 6, 2); break;
         }
     }
 
     function drawSprite(x, y, dir, frame, hc, sc, sc2) {
         const p = (c, ox, oy, w, h) => { px(c, x + ox, y + oy, w || 1, h || 1); };
-        p(K.shadow, 4, 21, 16, 3);
-        p(hc, 6, 0, 12, 8); p(hc, 4, 2, 16, 5);
+        p('rgba(0,0,0,0.35)', 6, 27, 18, 3);
+        p(hc, 8, 1, 12, 6); p(hc, 6, 4, 16, 4);
+        p(K.hair, 7, 6, 14, 3);
         if (dir !== 1) {
-            p(K.skin, 6, 6, 12, 8);
-            if (dir === 2) p(K.black, 6, 9, 3, 3); else if (dir === 3) p(K.black, 15, 9, 3, 3); else { p(K.black, 7, 9, 3, 3); p(K.black, 14, 9, 3, 3); }
+            p(K.skin, 8, 8, 12, 8);
+            if (dir === 2) p(K.black, 9, 11, 3, 2);
+            else if (dir === 3) p(K.black, 16, 11, 3, 2);
+            else { p(K.black, 10, 11, 2, 2); p(K.black, 16, 11, 2, 2); }
         }
-        p(sc, 4, 14, 16, 6); p(sc2, 4, 14, 3, 6); p(sc2, 17, 14, 3, 6);
-        p(K.skin, 3, 15, 1, 3); p(K.skin, 20, 15, 1, 3);
-        if (frame === 0) { p(K.pants, 6, 20, 5, 3); p(K.pants, 13, 20, 5, 3); p(K.shoe, 6, 23, 5, 1); p(K.shoe, 13, 23, 5, 1); }
-        else { p(K.pants, 4, 20, 5, 3); p(K.pants, 15, 20, 5, 3); p(K.shoe, 4, 23, 5, 1); p(K.shoe, 15, 23, 5, 1); }
+        p(sc, 6, 17, 16, 7); p(sc2, 6, 17, 3, 7); p(sc2, 19, 17, 3, 7);
+        p('#ff4fa3', 10, 18, 8, 1);
+        p('#f7f2ff', 11, 9, 2, 1); p('#f7f2ff', 17, 9, 1, 1);
+        p(K.skin, 4, 18, 2, 4); p(K.skin, 22, 18, 2, 4);
+        if (frame === 0) {
+            p(K.pants, 8, 24, 5, 4); p(K.pants, 15, 24, 5, 4);
+            p(K.shoe, 8, 28, 5, 2); p(K.shoe, 15, 28, 5, 2);
+        } else {
+            p(K.pants, 6, 24, 5, 4); p(K.pants, 17, 24, 5, 4);
+            p(K.shoe, 6, 28, 5, 2); p(K.shoe, 17, 28, 5, 2);
+        }
     }
 
     function drawPlayerSprite(x, y, dir, frame) { drawSprite(x, y, dir, frame, K.hat, K.shirt, K.shirt2); }
