@@ -3,7 +3,7 @@
 
     const canvas = document.getElementById('game-canvas');
     const ctx = canvas.getContext('2d');
-    const TILE = 24;
+    const TILE = 32;
     let INTERNAL_W = 320;
     let INTERNAL_H = 240;
     const buf = document.createElement('canvas');
@@ -47,7 +47,7 @@
     };
     const SOLID = [T.TREE, T.WALL_C, T.WALL_G, T.DOOR, T.WIN, T.ROOF_R, T.ROOF_B, T.ROOF_G, T.ROOF_Y, T.ROOF_D, T.WATER, T.FENCE, T.B_WALL, T.GATE_COL];
 
-    const MC = 64, MR = 48;
+    const MC = 50, MR = 38;
     const map = new Array(MR).fill(0).map(() => new Array(MC).fill(T.GRASS));
 
     function stamp(sx, sy, w, h, type) {
@@ -59,95 +59,98 @@
     }
 
     for (let x = 0; x < MC; x++) {
-        const wY = Math.floor(Math.sin(x * 0.2) * 2) + 4;
+        const wY = Math.floor(Math.sin(x * 0.25) * 1.5) + 3;
         stamp(x, 0, 1, wY, T.WATER);
         map[wY][x] = T.PATH;
     }
-    stamp(0, 5, MC, 2, T.PATH);
+    stamp(0, 4, MC, 2, T.PATH);
 
     outline(0, 0, MC, MR, T.TREE);
     stamp(0, 0, MC, 1, T.WATER);
 
-    stamp(2, 7, 16, 14, T.TREE);
-    for (let y = 7; y < 21; y++) for (let x = 2; x < 18; x++) if (Math.random() > 0.7 && map[y][x] === T.TREE) map[y][x] = T.TGRASS;
-    stamp(4, 10, 3, 9, T.PATH); stamp(7, 14, 10, 3, T.PATH);
+    stamp(2, 6, 12, 10, T.TREE);
+    for (let y = 6; y < 16; y++) for (let x = 2; x < 14; x++) if (Math.random() > 0.75 && map[y][x] === T.TREE) map[y][x] = T.TGRASS;
+    stamp(4, 9, 3, 6, T.PATH); stamp(7, 12, 6, 2, T.PATH);
 
-    stamp(5, 35, 24, 1, T.B_WALL);
-    stamp(5, 36, 24, 2, T.PATH);
+    stamp(4, 28, 18, 1, T.B_WALL);
+    stamp(4, 29, 18, 2, T.PATH);
 
-    stamp(22, 12, 6, 3, T.PATH);
-    stamp(22, 11, 6, 1, T.GATE_TOP);
-    stamp(22, 12, 1, 2, T.GATE_COL); stamp(24, 12, 1, 2, T.GATE_COL); stamp(27, 12, 1, 2, T.GATE_COL);
+    stamp(18, 10, 5, 2, T.PATH);
+    stamp(18, 9, 5, 1, T.GATE_TOP);
+    stamp(18, 10, 1, 2, T.GATE_COL); stamp(20, 10, 1, 2, T.GATE_COL); stamp(22, 10, 1, 2, T.GATE_COL);
 
-    stamp(30, 7, 12, 6, T.PATH);
-    stamp(31, 8, 10, 4, T.WALL_G);
-    stamp(35, 8, 2, 2, T.ROOF_D);
-    stamp(34, 11, 4, 1, T.WIN);
+    stamp(24, 6, 8, 4, T.PATH);
+    stamp(25, 7, 6, 3, T.WALL_G);
+    stamp(27, 7, 2, 1, T.ROOF_D);
+    stamp(26, 9, 3, 1, T.WIN);
 
-    stamp(40, 30, 20, 14, T.PATH);
-    outline(41, 31, 18, 12, T.FENCE);
-    outline(42, 32, 16, 10, T.TRACK);
-    outline(43, 33, 14, 8, T.TRACK);
-    stamp(50, 32, 2, 2, T.FINISH);
+    stamp(32, 24, 15, 10, T.PATH);
+    outline(33, 25, 13, 8, T.FENCE);
+    outline(34, 26, 11, 6, T.TRACK);
+    outline(35, 27, 9, 4, T.TRACK);
+    stamp(39, 27, 2, 2, T.FINISH);
 
     function bldg(x, y, w, h, roof) {
         stamp(x - 1, y - 1, w + 2, h + 2, T.PATH);
         stamp(x, y, w, h, T.WALL_C);
-        stamp(x, y - 1, w, 2, roof);
-        stamp(x + 1, y + 1, 1, 1, T.WIN); stamp(x + w - 2, y + 1, 1, 1, T.WIN);
+        stamp(x, y - 1, w, 1, roof);
+        const winY = y + 1;
+        if (w >= 4) {
+            stamp(x + 1, winY, 1, 1, T.WIN);
+            stamp(x + w - 2, winY, 1, 1, T.WIN);
+        }
         stamp(x + Math.floor(w / 2), y + h - 1, 1, 1, T.DOOR);
     }
 
-    bldg(45, 15, 5, 4, T.ROOF_R);
-    bldg(53, 12, 6, 4, T.ROOF_B);
-    bldg(48, 22, 6, 5, T.ROOF_G);
-    bldg(35, 24, 5, 4, T.ROOF_Y);
+    bldg(36, 12, 5, 4, T.ROOF_R);
+    bldg(42, 10, 5, 4, T.ROOF_B);
+    bldg(38, 18, 5, 4, T.ROOF_G);
+    bldg(28, 19, 5, 4, T.ROOF_Y);
 
-    stamp(28, 14, 20, 2, T.PATH);
-    stamp(46, 16, 2, 6, T.PATH);
-    stamp(55, 16, 2, 6, T.PATH);
-    stamp(35, 22, 20, 2, T.PATH);
-    stamp(46, 24, 2, 6, T.PATH);
+    stamp(24, 12, 15, 2, T.PATH);
+    stamp(37, 14, 2, 4, T.PATH);
+    stamp(43, 14, 2, 4, T.PATH);
+    stamp(28, 18, 15, 2, T.PATH);
+    stamp(38, 20, 2, 4, T.PATH);
 
     for (let y = 2; y < MR - 2; y++) {
         for (let x = 2; x < MC - 2; x++) {
-            if (map[y][x] === T.GRASS && Math.random() < 0.03) map[y][x] = T.FLOWER;
-            if (map[y][x] === T.GRASS && Math.random() < 0.04) map[y][x] = T.TGRASS;
-            if (map[y][x] === T.GRASS && Math.random() < 0.02) map[y][x] = T.TREE;
+            if (map[y][x] === T.GRASS && Math.random() < 0.02) map[y][x] = T.FLOWER;
+            if (map[y][x] === T.GRASS && Math.random() < 0.03) map[y][x] = T.TGRASS;
+            if (map[y][x] === T.GRASS && Math.random() < 0.015) map[y][x] = T.TREE;
         }
     }
 
-    for (let y = 0; y < MR; y++) for (let x = 0; x < MC; x++) {
-        if (map[y][x] === T.PATH && Math.random() < 0.05) map[y][x] = T.SIGN;
-    }
-    map[15][24] = T.PATH;
-    map[14][24] = T.PATH;
-
-    map[16][46] = T.SIGN; map[13][54] = T.SIGN; map[23][50] = T.SIGN; map[25][37] = T.SIGN; map[12][25] = T.SIGN; map[35][20] = T.SIGN;
+    map[13][37] = T.SIGN;
+    map[11][43] = T.SIGN;
+    map[19][39] = T.SIGN;
+    map[20][29] = T.SIGN;
+    map[10][20] = T.SIGN;
+    map[29][16] = T.SIGN;
 
     const triggers = [
-        { x: 46, y: 17, w: 1, h: 1, id: 'cic', name: 'CIC Berlin', subtitle: 'Wed 7:00 AM · Red roof' },
-        { x: 55, y: 16, w: 1, h: 1, id: 'arys', name: 'Arys Store', subtitle: 'Tue 7 PM · Gear hub' },
-        { x: 50, y: 26, w: 1, h: 1, id: 'fm', name: 'Flat Mountain', subtitle: 'Running gear' },
-        { x: 37, y: 28, w: 1, h: 1, id: 'aa', name: 'Arys Annex', subtitle: 'Nutrition & vibes' },
-        { x: 40, y: 37, w: 1, h: 1, id: 'tk', name: 'Interval Track', subtitle: 'Thu 7 PM Speed' },
-        { x: 25, y: 14, w: 1, h: 1, id: 'bg', name: 'Brandenburg Gate', subtitle: 'Iconic finish line' },
-        { x: 10, y: 6, w: 1, h: 1, id: 'sp', name: 'Spree River', subtitle: 'Scenic long runs' },
-        { x: 15, y: 35, w: 1, h: 1, id: 'bw', name: 'Berlin Wall', subtitle: 'Historic trail' },
-        { x: 33, y: 12, w: 1, h: 1, id: 'rs', name: 'Reichstag', subtitle: 'Parliament views' }
+        { x: 37, y: 14, w: 1, h: 1, id: 'cic', name: 'CIC Berlin', subtitle: 'Wed 7:00 AM · Red roof' },
+        { x: 43, y: 13, w: 1, h: 1, id: 'arys', name: 'Arys Store', subtitle: 'Tue 7 PM · Gear hub' },
+        { x: 39, y: 21, w: 1, h: 1, id: 'fm', name: 'Flat Mountain', subtitle: 'Running gear' },
+        { x: 29, y: 22, w: 1, h: 1, id: 'aa', name: 'Arys Annex', subtitle: 'Nutrition & vibes' },
+        { x: 32, y: 29, w: 1, h: 1, id: 'tk', name: 'Interval Track', subtitle: 'Thu 7 PM Speed' },
+        { x: 20, y: 11, w: 1, h: 1, id: 'bg', name: 'Brandenburg Gate', subtitle: 'Iconic finish line' },
+        { x: 8, y: 5, w: 1, h: 1, id: 'sp', name: 'Spree River', subtitle: 'Scenic long runs' },
+        { x: 12, y: 28, w: 1, h: 1, id: 'bw', name: 'Berlin Wall', subtitle: 'Historic trail' },
+        { x: 26, y: 10, w: 1, h: 1, id: 'rs', name: 'Reichstag', subtitle: 'Parliament views' }
     ];
 
     const npcs = [
-        { x: 45, y: 18, dir: 'up', type: 0, baseText: "CIC at 7AM. Can't oversleep!", altText: "Join us for intervals!" },
-        { x: 53, y: 18, dir: 'left', type: 1, baseText: "Arys run is great for socialization.", altText: "New shoes just dropped." },
-        { x: 14, y: 6, dir: 'down', type: 2, baseText: "River breeze is perfect today.", altText: "Morning laps here are gold." },
-        { x: 26, y: 14, dir: 'right', type: 0, baseText: "Just ran through the Gate! PR!", altText: "Try it at sunset!" },
-        { x: 48, y: 35, dir: 'left', type: 1, baseText: "Track day. My legs hurt already.", altText: "400m repeats today. Oof." },
-        { x: 20, y: 36, dir: 'up', type: 2, baseText: "Wall trail is deep in history.", altText: "Each step tells a story." },
-        { x: 30, y: 10, dir: 'up', type: 0, baseText: "Reichstag loop is 5k exactly.", altText: "Tourists always get in the way." },
-        { x: 12, y: 25, dir: 'right', type: 1, baseText: "Tiergarten is best at dawn.", altText: "Watch out for bikers!" },
-        { x: 57, y: 20, dir: 'down', type: 2, baseText: "Arys has gels on sale.", altText: "I prefer flat laces." },
-        { x: 42, y: 40, dir: 'left', type: 0, baseText: "Track closed on Mondays.", altText: "Bring spikes for winter." }
+        { x: 36, y: 15, dir: 'up', type: 0, baseText: "CIC at 7AM. Can't oversleep!", altText: "Join us for intervals!" },
+        { x: 42, y: 15, dir: 'left', type: 1, baseText: "Arys run is great for socialization.", altText: "New shoes just dropped." },
+        { x: 11, y: 5, dir: 'down', type: 2, baseText: "River breeze is perfect today.", altText: "Morning laps here are gold." },
+        { x: 21, y: 12, dir: 'right', type: 0, baseText: "Just ran through the Gate! PR!", altText: "Try it at sunset!" },
+        { x: 38, y: 28, dir: 'left', type: 1, baseText: "Track day. My legs hurt already.", altText: "400m repeats today. Oof." },
+        { x: 16, y: 29, dir: 'up', type: 2, baseText: "Wall trail is deep in history.", altText: "Each step tells a story." },
+        { x: 24, y: 8, dir: 'up', type: 0, baseText: "Reichstag loop is 5k exactly.", altText: "Tourists always get in the way." },
+        { x: 10, y: 20, dir: 'right', type: 1, baseText: "Tiergarten is best at dawn.", altText: "Watch out for bikers!" },
+        { x: 45, y: 16, dir: 'down', type: 2, baseText: "Arys has gels on sale.", altText: "I prefer flat laces." },
+        { x: 34, y: 31, dir: 'left', type: 0, baseText: "Track closed on Mondays.", altText: "Bring spikes for winter." }
     ];
 
     const randomEvents = [
@@ -166,7 +169,7 @@
         { name: "Sunset Loop", startHour: 20, durationMinutes: 50, location: 'bg', message: "Sunset Brandenburg Loop!" }
     ];
 
-    const player = { x: 46, y: 20, px: 46 * TILE, py: 20 * TILE, dir: 0, walking: false, step: 0 };
+    const player = { x: 37, y: 16, px: 37 * TILE, py: 16 * TILE, dir: 0, walking: false, step: 0 };
     const cam = { x: 0, y: 0 };
     const dialog = { active: false, text: '', displayedChars: 0, timer: 0, speed: 1, lines: [], autoClose: 0 };
     let lastTriggerId = null;
