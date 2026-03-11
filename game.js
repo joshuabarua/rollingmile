@@ -178,32 +178,6 @@
     let eventTimer = 0;
     let nextRandomEventTime = 0;
 
-    const DAY_CYCLE_FRAMES = 2400;
-
-    function getDayPhase() {
-        return Math.floor((gameFrame % DAY_CYCLE_FRAMES) / 10);
-    }
-
-    function getDayOverlay() {
-        const phase = getDayPhase();
-        let overlay = 'rgba(0,0,0,0)';
-        if (phase >= 150 && phase < 210) overlay = `rgba(10,10,30,${0.3 + 0.3 * Math.sin((phase - 150) * Math.PI / 60)})`;
-        else if (phase >= 210 || phase < 30) overlay = 'rgba(5,5,20,0.55)';
-        else if (phase >= 30 && phase < 90) overlay = 'rgba(255,250,200,0.05)';
-        else if (phase >= 120 && phase < 150) overlay = `rgba(255,140,90,${0.2 * Math.sin((phase - 120) * Math.PI / 30)})`;
-        return overlay;
-    }
-
-    function adjustColorsForTime() {
-        const phase = getDayPhase();
-        if (phase >= 180 || phase < 30) {
-            bctx.filter = 'hue-rotate(20deg) brightness(0.7)';
-        } else if (phase >= 120 && phase < 150) {
-            bctx.filter = 'hue-rotate(-10deg) brightness(1.1) saturate(1.3)';
-        } else {
-            bctx.filter = 'none';
-        }
-    }
 
     const particles = [];
     for (let i = 0; i < 40; i++) particles.push({
@@ -217,7 +191,7 @@
     });
 
     const keys = {};
-    window.addEventListener('keydown', e => { keys[e.key] = true; if ([' ', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'p', 'P', 'm', 'M', 'Escape'].includes(e.key)) e.preventDefault(); });
+    window.addEventListener('keydown', e => { keys[e.key] = true; if ([' ', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'p', 'P', 'Escape'].includes(e.key)) e.preventDefault(); });
     window.addEventListener('keyup', e => { keys[e.key] = false; });
 
     function resize() {
@@ -256,21 +230,76 @@
                 const sway = Math.sin(animFrame * 0.05 + tx) * 1;
                 bctx.fillStyle = K.t2; bctx.fillRect(x + 4 + sway, y + 4, 8, 6);
                 break;
-            case T.WALL_C: bctx.fillStyle = K.wallC; bctx.fillRect(x, y, TILE, TILE); px(K.wallC2, x, y + 6, TILE, 1); px(K.wallC2, x, y + 14, TILE, 1); break;
-            case T.WALL_G: bctx.fillStyle = K.wallG; bctx.fillRect(x, y, TILE, TILE); px(K.wallG2, x, y + 6, TILE, 1); px(K.wallG2, x, y + 14, TILE, 1); break;
-            case T.ROOF_R: bctx.fillStyle = K.roofR; bctx.fillRect(x, y, TILE, TILE); px(K.roofR2, x, y + TILE - 4, TILE, 4); break;
-            case T.ROOF_B: bctx.fillStyle = K.roofB; bctx.fillRect(x, y, TILE, TILE); px(K.roofB2, x, y + TILE - 4, TILE, 4); break;
-            case T.ROOF_G: bctx.fillStyle = K.roofG; bctx.fillRect(x, y, TILE, TILE); px(K.roofG2, x, y + TILE - 4, TILE, 4); break;
-            case T.ROOF_Y: bctx.fillStyle = K.roofY; bctx.fillRect(x, y, TILE, TILE); px(K.roofY2, x, y + TILE - 4, TILE, 4); break;
+            case T.WALL_C:
+                bctx.fillStyle = K.wallC; bctx.fillRect(x, y, TILE, TILE);
+                px(K.wallC2, x, y + 4, TILE, 2); px(K.wallC2, x, y + 10, TILE, 2); px(K.wallC2, x, y + 16, TILE, 2);
+                px('#d5c5aa', x + 2, y + 2, 2, 2); px('#d5c5aa', x + 20, y + 2, 2, 2);
+                px('#ddd0b8', x, y, TILE, 1); px('#e0d5c0', x, y, 1, TILE); px('#cfc0a8', x + TILE - 1, y, 1, TILE);
+                break;
+            case T.WALL_G:
+                bctx.fillStyle = K.wallG; bctx.fillRect(x, y, TILE, TILE);
+                px(K.wallG2, x, y + 4, TILE, 2); px(K.wallG2, x, y + 10, TILE, 2); px(K.wallG2, x, y + 16, TILE, 2);
+                px('#b0b0b0', x + 3, y + 3, 2, 2); px('#b0b0b0', x + 18, y + 3, 2, 2);
+                px('#d0d0d0', x, y, TILE, 1); px('#d5d5d5', x, y, 1, TILE); px('#909090', x + TILE - 1, y, 1, TILE);
+                break;
+            case T.ROOF_R:
+                bctx.fillStyle = K.roofR; bctx.fillRect(x, y, TILE, TILE);
+                px(K.roofR2, x, y + TILE - 6, TILE, 6);
+                for (let i = 0; i < TILE; i += 3) px('#d04545', x + i, y + 3, 1, 2);
+                px('#f06565', x + 2, y + 2, TILE - 4, 1);
+                break;
+            case T.ROOF_B:
+                bctx.fillStyle = K.roofB; bctx.fillRect(x, y, TILE, TILE);
+                px(K.roofB2, x, y + TILE - 6, TILE, 6);
+                for (let i = 0; i < TILE; i += 3) px('#2255aa', x + i, y + 3, 1, 2);
+                px('#5588dd', x + 2, y + 2, TILE - 4, 1);
+                break;
+            case T.ROOF_G:
+                bctx.fillStyle = K.roofG; bctx.fillRect(x, y, TILE, TILE);
+                px(K.roofG2, x, y + TILE - 6, TILE, 6);
+                for (let i = 0; i < TILE; i += 3) px('#339955', x + i, y + 3, 1, 2);
+                px('#55bb77', x + 2, y + 2, TILE - 4, 1);
+                break;
+            case T.ROOF_Y:
+                bctx.fillStyle = K.roofY; bctx.fillRect(x, y, TILE, TILE);
+                px(K.roofY2, x, y + TILE - 6, TILE, 6);
+                for (let i = 0; i < TILE; i += 3) px('#bb8822', x + i, y + 3, 1, 2);
+                px('#eebb44', x + 2, y + 2, TILE - 4, 1);
+                break;
             case T.ROOF_D: bctx.fillStyle = K.roofD; bctx.fillRect(x, y, TILE, TILE); px(K.roofD2, x + 4, y + 4, 16, 16); bctx.fillStyle = '#88ccff'; bctx.fillRect(x + 8, y + 8, 8, 8); break;
-            case T.DOOR: bctx.fillStyle = K.wallC; bctx.fillRect(x, y, TILE, TILE); bctx.fillStyle = K.door; bctx.fillRect(x + 6, y + 3, 12, 21); break;
-            case T.WIN: bctx.fillStyle = K.wallC; bctx.fillRect(x, y, TILE, TILE); bctx.fillStyle = K.winF; bctx.fillRect(x + 4, y + 4, 16, 16); bctx.fillStyle = K.win; bctx.fillRect(x + 5, y + 5, 14, 14); break;
+            case T.DOOR:
+                bctx.fillStyle = K.wallC; bctx.fillRect(x, y, TILE, TILE);
+                bctx.fillStyle = K.door; bctx.fillRect(x + 6, y + 4, 12, 20);
+                px('#5a3010', x + 7, y + 5, 10, 18);
+                px('#7a5030', x + 8, y + 6, 8, 16);
+                px('#4a2800', x + 15, y + 12, 2, 3);
+                px('#8a7060', x + 9, y + 7, 6, 2);
+                break;
+            case T.WIN:
+                bctx.fillStyle = K.wallC; bctx.fillRect(x, y, TILE, TILE);
+                bctx.fillStyle = K.winF; bctx.fillRect(x + 4, y + 4, 16, 16);
+                bctx.fillStyle = K.win; bctx.fillRect(x + 5, y + 5, 14, 14);
+                px('#5a98c8', x + 6, y + 6, 6, 6); px('#5a98c8', x + 13, y + 6, 6, 6);
+                px('#5a98c8', x + 6, y + 13, 6, 6); px('#5a98c8', x + 13, y + 13, 6, 6);
+                px('#2a4858', x + 11, y + 5, 2, 14); px('#2a4858', x + 5, y + 11, 14, 2);
+                px('#88d0ff', x + 7, y + 7, 3, 3); px('#88d0ff', x + 14, y + 7, 3, 3);
+                break;
             case T.WATER:
                 bctx.fillStyle = K.w1; bctx.fillRect(x, y, TILE, TILE);
                 px(K.w3, x + ((4 + animFrame * 6) % 20), y + 5, 4, 1); px(K.w2, x + ((13 + animFrame * 4) % 18), y + 16, 5, 1);
                 break;
             case T.FENCE: px(K.fen, x + 3, y, 4, 24); px(K.fen2, x, y + 10, 24, 4); break;
-            case T.SIGN: px(K.sgnP, x + 10, y + 12, 3, 12); bctx.fillStyle = K.sgn; bctx.fillRect(x + 3, y + 3, 18, 10); break;
+            case T.SIGN:
+                px('#000', x + 1, y + 15, 6, 2);
+                px(K.sgnP, x + 10, y + 14, 4, 10);
+                px('#6a4520', x + 11, y + 15, 2, 9);
+                bctx.fillStyle = '#fff'; bctx.fillRect(x + 1, y + 1, 22, 14);
+                bctx.fillStyle = '#2a7a2a'; bctx.fillRect(x + 3, y + 3, 18, 10);
+                px('#1a5a1a', x + 3, y + 11, 18, 2);
+                px('#3a9a3a', x + 3, y + 3, 18, 1);
+                px('#fff', x + 5, y + 5, 2, 2); px('#fff', x + 9, y + 5, 2, 2); px('#fff', x + 13, y + 5, 2, 2); px('#fff', x + 17, y + 5, 2, 2);
+                px('#fff', x + 6, y + 8, 10, 2);
+                break;
             case T.TGRASS: px(K.tg1, x + 4, y + 4, 3, 20); px(K.tg2, x + 10, y + 10, 2, 14); px(K.tg3, x + 16, y + 6, 3, 18); break;
             case T.FLOWER:
                 const petal = (animFrame + tx * ty) % 3;
@@ -522,7 +551,6 @@
         updateCamera();
         const sc = Math.floor(cam.x / TILE), sr = Math.floor(cam.y / TILE), ec = Math.min(sc + Math.ceil(INTERNAL_W / TILE) + 1, MC), er = Math.min(sr + Math.ceil(INTERNAL_H / TILE) + 1, MR);
         bctx.save(); bctx.translate(-Math.round(cam.x), -Math.round(cam.y));
-        adjustColorsForTime();
         for (let r = sr; r < er; r++) for (let c = sc; c < ec; c++) drawTile(map[r][c], c, r);
         const ents = [{ type: 'p', y: player.py }];
         npcs.forEach((n, i) => ents.push({ type: 'n', idx: i, y: n.y * TILE }));
@@ -540,9 +568,6 @@
         const grd = bctx.createRadialGradient(INTERNAL_W / 2, INTERNAL_H / 2, INTERNAL_W * 0.4, INTERNAL_W / 2, INTERNAL_H / 2, INTERNAL_W * 0.7);
         grd.addColorStop(0, 'rgba(0,0,0,0)'); grd.addColorStop(1, 'rgba(0,0,0,0.2)');
         bctx.fillStyle = grd; bctx.fillRect(0, 0, INTERNAL_W, INTERNAL_H);
-
-        bctx.fillStyle = getDayOverlay();
-        bctx.fillRect(0, 0, INTERNAL_W, INTERNAL_H);
 
         drawMinimap();
         drawDialogBox();
