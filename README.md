@@ -9,37 +9,26 @@ A pixel-art exploration game about Berlin’s running culture. Wander the city, 
 
 ## Controls
 
-- **Arrow keys or WASD**: Move
-- **Space/Enter**: Interact with NPCs and signs
-- **P or Escape**: Pause/resume
+| Button | Keyboard | Action |
+| --- | --- | --- |
+| D-pad | Arrow keys / WASD | Move |
+| A | Z / Space / Enter | Talk, read signs, advance text |
+| B (hold) | X / Shift | Run |
+| START | P / Escape | Pause and open the town map |
+
+On touch devices, use the on-screen handheld buttons.
 
 Tip: sign posts point you toward the nearest spot you haven't visited yet.
 
-Mobile: on-screen D-pad and interact button appear automatically on touch devices.
-
 ## Features
 
-- Berlin-inspired pixel map with landmarks (Brandenburg Gate, Spree, Reichstag, etc.)
+- Classic handheld look: 160x144 screen, 4-shade green palette, 16x16 pixel-art tiles and sprites
+- Hand-laid Berlin map: Spree, Tiergarten, Reichstag, Brandenburg Gate, shop street, Wall memorial, running track
 - 9 run culture hotspots to discover
-- NPCs with randomized dialogue
+- NPCs who turn to face you when you talk
+- Town map on the pause screen showing visited and remaining spots
 - Progress auto-saves in your browser (localStorage)
-- Quest progress tracker
-- Minimap in the top-right
-- Location cards when you discover a new spot
-- Start screen and pause menu
-- Mobile-friendly controls
-- Atmospheric particles and subtle animations
-
-## Project structure
-
-```
-/
-├── index.html      # Main page and UI shell
-├── styles.css      # Styles for game, HUD, overlays, and mobile controls
-├── game.js         # Game engine, rendering, input, and game logic
-├── test.js         # Headless smoke test (npm test)
-└── README.md       # This file
-```
+- Works on phones in portrait and landscape
 
 ## Testing
 
