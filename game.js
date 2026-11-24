@@ -143,6 +143,7 @@
     outline(34, 26, 11, 6, T.TRACK);
     outline(35, 27, 9, 4, T.TRACK);
     fillRectSafe(39, 27, 2, 2, T.FINISH);
+    fillRectSafe(33, 29, 1, 1, T.PATH); // gate in the fence so the track is reachable
 
     fillRectSafe(37, 22, 4, 3, T.PATH);
     fillRectSafe(36, 21, 6, 1, T.SIGN);
@@ -170,7 +171,7 @@
         { x: 38, y: 15, w: 1, h: 1, id: 'cic', name: 'CIC Berlin', subtitle: 'Wed 7:00 AM · Neon sessions' },
         { x: 44, y: 14, w: 1, h: 1, id: 'arys', name: 'Arys Store', subtitle: 'Tue 7 PM · Gear hub' },
         { x: 43, y: 23, w: 1, h: 1, id: 'fm', name: 'Flat Mountain', subtitle: 'Running gear' },
-        { x: 30, y: 30, w: 1, h: 1, id: 'aa', name: 'Arys Annex', subtitle: 'Nutrition & vibes' },
+        { x: 30, y: 33, w: 1, h: 1, id: 'aa', name: 'Arys Annex', subtitle: 'Nutrition & vibes' },
         { x: 32, y: 29, w: 1, h: 1, id: 'tk', name: 'Interval Track', subtitle: 'Thu 7 PM Speed' },
         { x: 20, y: 11, w: 1, h: 1, id: 'bg', name: 'Brandenburg Gate', subtitle: 'Iconic finish line' },
         { x: 8, y: 5, w: 1, h: 1, id: 'sp', name: 'Spree River', subtitle: 'Scenic long runs' },
@@ -188,7 +189,7 @@
         { x: 24, y: 8, dir: 'up', type: 0, baseText: "Reichstag loop is 5k exactly.", altText: "Tourists always get in the way." },
         { x: 10, y: 20, dir: 'right', type: 1, baseText: "Tiergarten is best at dawn.", altText: "Watch out for bikers!" },
         { x: 45, y: 16, dir: 'down', type: 2, baseText: "Arys has gels on sale.", altText: "I prefer flat laces." },
-        { x: 31, y: 31, dir: 'left', type: 0, baseText: "Track closed on Mondays.", altText: "Bring spikes for winter." }
+        { x: 32, y: 33, dir: 'left', type: 0, baseText: "Track closed on Mondays.", altText: "Bring spikes for winter." }
     ];
 
     const randomEvents = [
@@ -207,17 +208,19 @@
         { name: "Sunset Loop", startHour: 20, durationMinutes: 50, location: 'bg', message: "Sunset Brandenburg Loop!" }
     ];
 
-    const player = { x: 38, y: 16, px: 38 * TILE, py: 16 * TILE, dir: 0, walking: false, step: 0 };
+    const START = { x: 38, y: 16 };
+    const player = { x: START.x, y: START.y, px: START.x * TILE, py: START.y * TILE, dir: 0, walking: false, step: 0 };
     const cam = { x: 0, y: 0 };
     const dialog = { active: false, text: '', displayedChars: 0, timer: 0, speed: 1, lines: [], autoClose: 0 };
     let lastTriggerId = null;
     let visitedSpots = new Set();
-    let gameStarted = true;
+    let gameStarted = false;
     let paused = false;
     let gameFrame = 0;
     let currentEvent = null;
-    let eventTimer = 0;
-    let nextRandomEventTime = 0;
+    let nextRandomEventTime = 900; // first ambient event ~15s in
+    let statusTimer = 0;
+    const SAVE_KEY = 'runClubBerlinSave';
 
 
     const particles = [];
@@ -232,8 +235,19 @@
     });
 
     const keys = {};
-    window.addEventListener('keydown', e => { keys[e.key] = true; if ([' ', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'p', 'P', 'Escape'].includes(e.key)) e.preventDefault(); });
-    window.addEventListener('keyup', e => { keys[e.key] = false; });
+    // Single letters are lowercased so Shift / Caps Lock don't break WASD or P.
+    const normKey = k => (k.length === 1 ? k.toLowerCase() : k);
+    const GAME_KEYS = [' ', 'Enter', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'p', 'Escape'];
+    window.addEventListener('keydown', e => {
+        const k = normKey(e.key);
+        keys[k] = true;
+        if (GAME_KEYS.includes(k) && e.target.tagName !== 'BUTTON') e.preventDefault();
+    });
+    window.addEventListener('keyup', e => { keys[normKey(e.key)] = false; });
+    const clearKeys = () => { for (const k in keys) keys[k] = false; };
+    window.addEventListener('blur', clearKeys);
+    document.addEventListener('visibilitychange', () => { if (document.hidden) clearKeys(); });
+    const isSolid = (x, y) => x < 0 || y < 0 || x >= MC || y >= MR || SOLID.includes(map[y][x]);
 
     function resize() {
         canvas.width = window.innerWidth;
@@ -452,11 +466,37 @@
         progressEl.textContent = `${count} / ${total} spots visited`;
         if (count === total) {
             currentEl.textContent = 'All spots visited! You are a Berlin run legend.';
-            statusEl.textContent = 'Quest complete!';
+            if (statusTimer <= 0) statusEl.textContent = 'Quest complete!';
         } else {
-            currentEl.textContent = 'Find the run culture hotspots.';
-            statusEl.textContent = 'Explore the city.';
+            const next = nearestUnvisited();
+            currentEl.textContent = next ? `Nearest: ${next.name}` : 'Find the run culture hotspots.';
+            if (statusTimer <= 0) statusEl.textContent = 'Explore the city.';
         }
+    }
+
+    function setStatus(text, frames = 240) {
+        document.getElementById('status-text').textContent = text;
+        statusTimer = frames;
+    }
+
+    function nearestUnvisited() {
+        let best = null, bestD = Infinity;
+        for (const t of triggers) {
+            if (visitedSpots.has(t.id)) continue;
+            const d = Math.abs(t.x - player.x) + Math.abs(t.y - player.y);
+            if (d < bestD) { bestD = d; best = t; }
+        }
+        return best;
+    }
+
+    function signText() {
+        const t = nearestUnvisited();
+        if (!t) return 'Sign post: You have seen every spot. Go run!';
+        const dx = t.x - player.x, dy = t.y - player.y;
+        const ns = dy < -1 ? 'north' : dy > 1 ? 'south' : '';
+        const ew = dx < -1 ? 'west' : dx > 1 ? 'east' : '';
+        const dirText = (ns + (ns && ew ? '-' : '') + ew) || 'right here';
+        return `Sign post: ${t.name} -> ${dirText}.`;
     }
 
     function showLocationCard(name, subtitle) {
@@ -466,7 +506,8 @@
         titleEl.textContent = name;
         subtitleEl.textContent = subtitle;
         card.classList.add('visible');
-        setTimeout(() => card.classList.remove('visible'), 3000);
+        clearTimeout(showLocationCard.t);
+        showLocationCard.t = setTimeout(() => card.classList.remove('visible'), 3000);
     }
 
     function updateCamera() {
@@ -477,11 +518,17 @@
     const MDX = [0, 0, -1, 1], MDY = [1, -1, 0, 0], SPEED = 2;
 
     function handleInput() {
+        if (!gameStarted) return;
         if (paused) {
-            if (keys['p'] || keys['P'] || keys['Escape']) {
+            if (keys['p'] || keys['Escape']) {
                 togglePause();
-                keys['p'] = keys['P'] = keys['Escape'] = false;
+                keys['p'] = keys['Escape'] = false;
             }
+            return;
+        }
+        if (keys['p'] || keys['Escape']) {
+            togglePause();
+            keys['p'] = keys['Escape'] = false;
             return;
         }
 
@@ -500,11 +547,8 @@
             if (dir >= 0) {
                 player.dir = dir;
                 const nx = player.x + MDX[dir], ny = player.y + MDY[dir];
-                if (nx >= 0 && nx < MC && ny >= 0 && ny < MR) {
-                    const tile = map[ny][nx];
-                    const npcHere = npcs.find(n => n.x === nx && n.y === ny);
-                    if (!SOLID.includes(tile) && !npcHere) { player.walking = true; player.step = 1 - player.step; }
-                }
+                const npcHere = npcs.find(n => n.x === nx && n.y === ny);
+                if (!isSolid(nx, ny) && !npcHere) { player.walking = true; player.step = 1 - player.step; }
             }
             if (keys[' '] || keys['Enter']) {
                 keys[' '] = keys['Enter'] = false;
@@ -516,13 +560,9 @@
                 }
                 if (fx >= 0 && fx < MC && fy >= 0 && fy < MR) {
                     const t = map[fy][fx];
-                    if (t === T.SIGN) showDialog("Sign post: It points the way.");
+                    if (t === T.SIGN) showDialog(signText());
                     if (t === T.DOOR) showDialog("It's locked, but you can peek inside.");
                 }
-            }
-            if (keys['p'] || keys['P'] || keys['Escape']) {
-                togglePause();
-                keys['p'] = keys['P'] = keys['Escape'] = false;
             }
         }
     }
@@ -538,13 +578,18 @@
             player.walking = false;
             const trig = triggers.find(t => player.x >= t.x && player.x < t.x + t.w && player.y >= t.y && player.y < t.y + t.h);
             if (trig) {
-                if (lastTriggerId !== trig.id && !dialog.active) {
+                if (lastTriggerId !== trig.id) {
                     lastTriggerId = trig.id;
-                    showDialog(`${trig.name}\n${trig.subtitle}`);
+                    showLocationCard(trig.name, trig.subtitle);
                     if (!visitedSpots.has(trig.id)) {
                         visitedSpots.add(trig.id);
+                        if (visitedSpots.size === triggers.length) {
+                            showDialog('Quest complete! You visited every Berlin run spot. Legend status unlocked.');
+                        } else {
+                            setStatus(`Discovered ${trig.name}!`);
+                        }
                         updateQuestUI();
-                        showLocationCard(trig.name, trig.subtitle);
+                        saveGame();
                     }
                 }
             } else {
@@ -553,24 +598,32 @@
         }
     }
 
-    function drawMinimap() {
-        const mmX = INTERNAL_W - 70, mmY = 8, mmW = 64, mmH = 48, scale = 1;
-        bctx.fillStyle = 'rgba(10, 10, 18, 0.8)';
-        bctx.fillRect(mmX - 2, mmY - 2, mmW + 4, mmH + 4);
-        bctx.strokeStyle = '#ffdd44';
-        bctx.lineWidth = 1;
-        bctx.strokeRect(mmX - 2, mmY - 2, mmW + 4, mmH + 4);
+    // The map never changes, so render its minimap once and blit it each frame.
+    const minimapLayer = document.createElement('canvas');
+    minimapLayer.width = MC; minimapLayer.height = MR;
+    (function buildMinimap() {
+        const m = minimapLayer.getContext('2d');
         for (let y = 0; y < MR; y++) {
             for (let x = 0; x < MC; x++) {
                 const t = map[y][x];
                 let c = '#0a0a12';
-                if (t === T.PATH) c = '#c4af96';
+                if (t === T.PATH || t === T.TRACK || t === T.FINISH) c = '#c4af96';
                 else if (t === T.WATER) c = '#3a8ab0';
-                else if (t === T.TREE || t === T.B_WALL || SOLID.includes(t)) c = '#2d7a3a';
-                bctx.fillStyle = c;
-                bctx.fillRect(mmX + x * scale, mmY + y * scale, scale, scale);
+                else if (SOLID.includes(t)) c = '#2d7a3a';
+                m.fillStyle = c;
+                m.fillRect(x, y, 1, 1);
             }
         }
+    })();
+
+    function drawMinimap() {
+        const mmW = MC, mmH = MR, mmX = INTERNAL_W - mmW - 6, mmY = 8;
+        bctx.fillStyle = 'rgba(10, 10, 18, 0.8)';
+        bctx.fillRect(mmX - 2, mmY - 2, mmW + 4, mmH + 4);
+        bctx.strokeStyle = '#ffdd44';
+        bctx.lineWidth = 1;
+        bctx.strokeRect(mmX - 1.5, mmY - 1.5, mmW + 3, mmH + 3);
+        bctx.drawImage(minimapLayer, mmX, mmY);
         triggers.forEach(t => {
             bctx.fillStyle = visitedSpots.has(t.id) ? '#ffdd44' : '#ff6b8a';
             bctx.fillRect(mmX + t.x - 1, mmY + t.y - 1, 3, 3);
@@ -589,7 +642,7 @@
             const current = hour * 60 + minute;
             if (current >= eventStart && current < eventEnd && !currentEvent) {
                 currentEvent = event;
-                showDialog(`${event.name}\n${event.message}`, 180);
+                showDialog(`${event.name}: ${event.message}`, 180);
             }
         });
         if (currentEvent) {
@@ -602,18 +655,14 @@
         }
     }
 
+    // Ambient flavour goes to the status panel so it never interrupts movement.
     function updateRandomEvents() {
-        if (gameFrame > nextRandomEventTime && !dialog.active && !currentEvent) {
+        if (gameFrame > nextRandomEventTime && statusTimer <= 0) {
             const event = randomEvents[Math.floor(Math.random() * randomEvents.length)];
-            showDialog(event.text, 180);
-            currentEvent = { text: event.text };
-            eventTimer = event.duration;
-            nextRandomEventTime = gameFrame + 600 + Math.floor(Math.random() * 600);
+            setStatus(event.text, Math.round(event.duration / (1000 / 60)));
+            nextRandomEventTime = gameFrame + 900 + Math.floor(Math.random() * 900);
         }
-        if (currentEvent && eventTimer > 0) {
-            eventTimer -= 16;
-            if (eventTimer <= 0) currentEvent = null;
-        }
+        if (statusTimer > 0 && --statusTimer === 0) updateQuestUI();
     }
 
     function render() {
@@ -629,7 +678,6 @@
             else { const n = npcs[e.idx]; drawNPCSprite(n.x * TILE, n.y * TILE, n.dir, n.type); }
         });
         particles.forEach(p => {
-            p.x += p.vx; p.y += p.vy; if (p.y < 0) { p.y = MR * TILE; p.x = Math.random() * MC * TILE; } if (p.x < 0) p.x = MC * TILE; if (p.x > MC * TILE) p.x = 0;
             bctx.globalAlpha = p.a; bctx.fillStyle = p.c; bctx.fillRect(p.x, p.y, p.size, p.size);
         });
         bctx.globalAlpha = 1; bctx.restore();
@@ -660,24 +708,25 @@
     function saveGame() {
         const save = {
             player: { x: player.x, y: player.y },
-            visitedSpots: Array.from(visitedSpots),
-            gameFrame
+            visitedSpots: Array.from(visitedSpots)
         };
-        localStorage.setItem('runClubBerlinSave', JSON.stringify(save));
+        try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) { /* storage unavailable */ }
     }
 
     function loadGame() {
-        const saved = localStorage.getItem('runClubBerlinSave');
-        if (saved) {
-            const save = JSON.parse(saved);
-            player.x = save.player.x;
-            player.y = save.player.y;
-            player.px = player.x * TILE;
-            player.py = player.y * TILE;
-            visitedSpots = new Set(save.visitedSpots);
-            gameFrame = save.gameFrame || 0;
-            updateQuestUI();
-        }
+        let save = null;
+        try { save = JSON.parse(localStorage.getItem(SAVE_KEY)); } catch (e) { save = null; }
+        if (!save) return;
+        const ids = new Set(triggers.map(t => t.id));
+        visitedSpots = new Set((save.visitedSpots || []).filter(id => ids.has(id)));
+        // The map layout has changed between versions; don't spawn inside a wall.
+        const sx = save.player && save.player.x, sy = save.player && save.player.y;
+        const ok = Number.isInteger(sx) && Number.isInteger(sy) && !isSolid(sx, sy) && !npcs.some(n => n.x === sx && n.y === sy);
+        player.x = ok ? sx : START.x;
+        player.y = ok ? sy : START.y;
+        player.px = player.x * TILE;
+        player.py = player.y * TILE;
+        lastTriggerId = (triggers.find(t => t.x === player.x && t.y === player.y) || {}).id || null;
     }
 
     function startGame() {
@@ -685,13 +734,36 @@
         updateQuestUI();
     }
 
-    function loop() {
+    function updateParticles() {
+        particles.forEach(p => {
+            p.x += p.vx; p.y += p.vy;
+            if (p.y < 0) { p.y = MR * TILE; p.x = Math.random() * MC * TILE; }
+            if (p.x < 0) p.x = MC * TILE; if (p.x > MC * TILE) p.x = 0;
+        });
+    }
+
+    // Fixed 60 Hz simulation so speed is the same on 60/120/144 Hz displays.
+    const STEP_MS = 1000 / 60;
+    let lastTime = performance.now(), acc = 0;
+
+    function loop(now) {
+        acc += Math.min(250, now - lastTime);
+        lastTime = now;
+        while (acc >= STEP_MS) { update(); acc -= STEP_MS; }
+        render();
+        requestAnimationFrame(loop);
+    }
+
+    function update() {
         if (!paused) {
             gameFrame++;
             animTick++; if (animTick % 30 === 0) animFrame = (animFrame + 1) % 4;
+            updateParticles();
             handleInput(); updatePlayer();
-            updateRunEvents();
-            updateRandomEvents();
+            if (gameStarted) {
+                updateRunEvents();
+                updateRandomEvents();
+            }
             if (dialog.active) {
                 if (dialog.displayedChars < (dialog.lines.length ? dialog.lines.join('\n').length : dialog.text.length)) {
                     if (++dialog.timer >= dialog.speed) { dialog.timer = 0; dialog.displayedChars++; }
@@ -700,39 +772,40 @@
                     if (dialog.autoClose <= 0) dialog.active = false;
                 }
             }
-            if (gameFrame % 300 === 0) saveGame();
+            if (gameStarted && gameFrame % 300 === 0) saveGame();
+        } else {
+            handleInput();
         }
-        render();
-        requestAnimationFrame(loop);
     }
 
-    document.getElementById('start-button').addEventListener('click', () => {
+    const startButton = document.getElementById('start-button');
+    startButton.addEventListener('click', () => {
         document.getElementById('start-screen').classList.remove('visible');
         setTimeout(() => document.getElementById('start-screen').classList.add('hidden'), 300);
+        startButton.blur();
+        clearKeys();
+        gameStarted = true;
     });
     document.getElementById('resume-button').addEventListener('click', togglePause);
 
     document.querySelectorAll('#mobile-controls button').forEach(btn => {
-        btn.addEventListener('touchstart', e => {
-            e.preventDefault();
-            keys[btn.dataset.key] = true;
-        });
-        btn.addEventListener('touchend', e => {
-            e.preventDefault();
-            keys[btn.dataset.key] = false;
-        });
-        btn.addEventListener('mousedown', e => {
-            e.preventDefault();
-            keys[btn.dataset.key] = true;
-        });
-        btn.addEventListener('mouseup', e => {
-            e.preventDefault();
-            keys[btn.dataset.key] = false;
-        });
+        const key = btn.dataset.key;
+        const press = e => { e.preventDefault(); keys[key] = true; };
+        const release = e => { e.preventDefault(); keys[key] = false; };
+        btn.addEventListener('pointerdown', press);
+        ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => btn.addEventListener(ev, release));
+        btn.addEventListener('contextmenu', e => e.preventDefault());
     });
 
     window.addEventListener('beforeunload', saveGame);
 
+    // Re-wrap dialog text once the pixel font has loaded (measurements differ).
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { dialog.lines = []; });
+
+    // Read-only hook used by test.js to verify map reachability.
+    window.__ROLLING_MILE__ = Object.freeze({ map, triggers, npcs, isSolid, start: START, MC, MR });
+
     startGame();
-    loop();
+    if (visitedSpots.size) startButton.textContent = 'Continue';
+    requestAnimationFrame(loop);
 })();

@@ -4,7 +4,7 @@
   "description": "A pixel-art exploration game about Berlin’s running culture. Wander the city, meet runners, and visit every featured spot.",
   "main": "game.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node test.js"
   },
   "repository": {
     "type": "git",

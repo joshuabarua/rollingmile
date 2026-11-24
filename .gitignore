@@ -8,3 +8,6 @@ Thumbs.db
 # Optional local dev files
 *.local
 .env
+
+# Dependencies (install with npm install)
+node_modules/

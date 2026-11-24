@@ -290,13 +290,34 @@ body {
     gap: 4px;
 }
 
+/* Narrow screens: keep the HUD clear of the minimap (drawn top-right, ~19% of width). */
+@media (max-width: 640px) {
+    #hud-top {
+        right: calc(22vw + 12px);
+        gap: 6px;
+        flex-direction: column;
+    }
+
+    .panel {
+        font-size: 8px;
+        padding: 6px 8px;
+        max-width: none;
+    }
+
+    #location-card {
+        min-width: 0;
+        width: calc(100% - 24px);
+        bottom: 30%;
+    }
+}
+
 @media (pointer: coarse) and (max-width: 768px) {
     #mobile-controls {
         display: flex;
+        bottom: 96px; /* stay above the in-canvas dialog box */
     }
 
     #hint {
-        font-size: 8px;
-        bottom: 64px;
+        display: none;
     }
 }
